@@ -4,8 +4,9 @@
 // Date:  2011/11/1
 // Author: Jaroslav Krivanek, Jiri Bittner CTU Prague
 //---------------------------------------------------------------------------
-
+#include "Context.h"
 #include "sgl.h"
+
 
 /// Current error code.
 static sglEErrorCode _libStatus = SGL_NO_ERROR;
@@ -55,59 +56,64 @@ const char* sglGetErrorString(sglEErrorCode error)
 // Initialization functions
 //---------------------------------------------------------------------------
 
-void sglInit(void) {}
+static ContextManager cm;
 
-void sglFinish(void) {}
+void sglInit(void) 
+{
+}
 
-int sglCreateContext(int width, int height) {return 0;}
+void sglFinish(void)
+{
+}
 
-void sglDestroyContext(int id) {}
+int sglCreateContext(int width, int height)
+{
+	Context* tmp = new Context(width, height);
 
-void sglSetContext(int id) {}
+	return cm.addContext(tmp);
+}
 
-int sglGetContext(void) {return 0;}
+void sglDestroyContext(int id) { cm.destroyContext(id); }
 
-float *sglGetColorBufferPointer(void) {return 0;}
+void sglSetContext(int id) { cm.setCurrentContext(id); }
+
+int sglGetContext(void) { return cm.contextId(); }
+
+float *sglGetColorBufferPointer(void) { return cm.currentContext()->getColorBufferPointer(); }
 
 //---------------------------------------------------------------------------
 // Drawing functions
 //---------------------------------------------------------------------------
 
-void sglClearColor (float r, float g, float b, float alpha) {}
+void sglClearColor (float r, float g, float b, float alpha)
+{
+}
 
 void sglClear(unsigned what) {}
 
 // TODO:
 void sglBegin(sglEElementType mode)
 {
-	switch (mode)
-	{
-		case SGL_POINTS:
-			break;
-
-		case SGL_LINES:
-			break;
-
-		default:
-			break;
-	}
+	Context* cc = cm.currentContext();
+	
+	cc->setDrawingMode(mode);
+	cc->clearVertexBuffer();
 }
 
 void sglEnd(void)
 {
-	// !!! zde se bude vykreslovat
-	/*
-		switch (element type)
-		{
-			...
 
-			na vykresleni zavest nejakou metodu rasterizePoint(x, y) v ramci Contextu
-			.
-			.
-			.
-			rasterizeLine(x1, y1, x2, y2)
-		}	
-	*/
+	Context* cc = cm.currentContext();
+	switch (sglEElementType mode = cc->getDrawingMode())
+	{
+		case SGL_POINTS:
+			cc->rasterizePoints();
+			cc->clearVertexBuffer();
+			break;
+
+		case SGL_LINES:
+			break;
+	}
 }
 
 void sglVertex4f(float x, float y, float z, float w) {}
@@ -117,7 +123,8 @@ void sglVertex3f(float x, float y, float z) {}
 // TODO:
 void sglVertex2f(float x, float y)
 {
-	// buffer.push_back(Vertex3(x, y, 0));
+	vertex tmp(x, y);
+	cm.currentContext()->pushVertex(tmp);
 }
 
 void sglCircle(float x, float y, float z, float radius) {}
@@ -163,7 +170,7 @@ void sglViewport(int x, int y, int width, int height) {}
 // TODO:
 void sglColor3f(float r, float g, float b)
 {
-	
+	cm.currentContext()->setCurrentColor(r, g, b);
 }
 
 void sglAreaMode(sglEAreaMode mode) {}
@@ -171,7 +178,7 @@ void sglAreaMode(sglEAreaMode mode) {}
 // TODO:
 void sglPointSize(float size)
 {
-
+	cm.currentContext()->setPointSize(size);
 }
 
 void sglEnable(sglEEnableFlags cap) {}
