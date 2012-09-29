@@ -125,8 +125,7 @@ void sglVertex3f(float x, float y, float z) {}
 // TODO:
 void sglVertex2f(float x, float y)
 {
-	vertex tmp(x, y);
-	cm.currentContext()->pushVertex(tmp);
+	cm.currentContext()->addVertex(vertex(x, y));
 }
 
 void sglCircle(float x, float y, float z, float radius) {}
