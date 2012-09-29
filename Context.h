@@ -9,20 +9,18 @@ typedef		unsigned int	uint32;
 struct color_rgba
 {
 	public:
-		color_rgba(float red = 0.0f, float green = 0.0f, float blue = 0.0f, float alpha = 0.0f) : _r(red), _g(green), _b(blue), _a(alpha) {}
+		color_rgba(float red = 0.0f, float green = 0.0f, float blue = 0.0f) : _r(red), _g(green), _b(blue) {}
 
 		void setRed(float value){ _r = value; }
 		void setGreen(float value){ _g = value; }
 		void setBlue(float value){ _b = value; }
-		void setAlpha(float value){ _a = value; }
 
 		float red(){ return _r; }
 		float green(){ return _g; }
 		float blue(){ return _b; }
-		float alpha(){ return _a; }
 
 	private:
-		float _r, _g, _b, _a;
+		float _r, _g, _b;
 };
 
 struct vertex
