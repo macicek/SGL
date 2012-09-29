@@ -112,6 +112,8 @@ void sglEnd(void)
 			break;
 
 		case SGL_LINES:
+			cc->rasterizeLine();
+			cc->clearVertexBuffer();
 			break;
 	}
 }

@@ -91,6 +91,33 @@ class Context
 			}
 		}
 
+		void rasterizeLine()
+		{
+			uint32 size = static_cast<uint32>(_pointSize/2);
+
+			vertex start = _vertexBuffer.front();
+			vertex end = _vertexBuffer.back();
+
+			float c_0 = 2 * ( (end.y()) - start.y() );
+			float c_1 = c_0 - 2 * ( end.x() - start.x() );
+			float p = c_0 - end.x() - start.x();
+
+			setPixel(static_cast<uint32>(start.x()), static_cast<uint32>(start.y()));
+			
+			uint32 y_i = static_cast<uint32>(start.y());
+			for (uint32 x_i = static_cast<uint32>(start.x() + 1); x_i <= static_cast<uint32>(end.x()); ++x_i)
+			{
+				if (p < 0)
+					p += c_0;
+				else
+				{
+					p += c_1;
+					++y_i;
+				}
+				setPixel(x_i, y_i);
+			}
+		}
+
 		void setPixel(uint32 x, uint32 y)
 		{
 			setColorBuffer(x, y, _currentColor);
