@@ -37,6 +37,21 @@ struct vertex
 		float _x, _y, _z;
 };
 
+struct circle
+{
+	public:
+		circle(float x, float y, float radius) : _x(x), _y(y), _z(0.0f), _r(radius) {}
+		circle(float x, float y, float z, float radius) : _x(x), _y(y), _z(z), _r(radius) {} 
+
+		float x(){ return _x; }
+		float y(){ return _y; }
+		float z(){ return _z; }
+		float radius(){ return _r; }
+
+	private:
+		float _x, _y, _z, _r;
+};
+
 /// A context class.
 /**
 	A context class represents a single scene or a context. Multiple contexts can be held in memory at the
@@ -190,6 +205,15 @@ class Context
 				}
 				setPixel(x_i, y_i);
 			}
+		}
+
+		/// Inserts a circle into memory
+		/**
+			Based on vertices inside vertex buffer, calculates points using Bressenham algorithm
+		*/
+		void rasterizeCircle()
+		{
+
 		}
 
 		/// Sets a given pixel
