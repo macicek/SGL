@@ -7,7 +7,6 @@
 #include "Context.h"
 #include "sgl.h"
 
-
 /// Current error code.
 static sglEErrorCode _libStatus = SGL_NO_ERROR;
 
@@ -58,8 +57,11 @@ const char* sglGetErrorString(sglEErrorCode error)
 
 static ContextManager cm;
 
+
+
 void sglInit(void) 
 {
+	
 }
 
 void sglFinish(void)
@@ -108,14 +110,21 @@ void sglEnd(void)
 	{
 		case SGL_POINTS:
 			cc->rasterizePoints();
-			cc->clearVertexBuffer();
 			break;
 
 		case SGL_LINES:
 			cc->rasterizeLine();
-			cc->clearVertexBuffer();
+			break;
+
+		case SGL_LINE_STRIP:
+			cc->rasterizeLineStrip();
+			break;
+
+		case SGL_LINE_LOOP:
+			cc->rasterizeLineLoop();
 			break;
 	}
+	cc->clearVertexBuffer();
 }
 
 void sglVertex4f(float x, float y, float z, float w) {}
@@ -138,17 +147,37 @@ void sglArc(float x, float y, float z, float radius, float from, float to) {}
 // Transform functions
 //---------------------------------------------------------------------------
 
-void sglMatrixMode( sglEMatrixMode mode ) {}
+void sglMatrixMode( sglEMatrixMode mode )
+{
+	cm.currentContext()->setMatrixMode(mode);
+}
 
 void sglPushMatrix(void) {}
 
 void sglPopMatrix(void) {}
 
-void sglLoadIdentity(void) {}
+void sglLoadIdentity(void)
+{
+	Context* cc = cm.currentContext();
+
+	switch ( cc->getMatrixMode() )
+	{
+		case SGL_PROJECTION:
+			break;
+		case SGL_MODELVIEW:
+			break;
+	}
+}
 
 void sglLoadMatrix(const float *matrix) {}
 
-void sglMultMatrix(const float *matrix) {}
+void sglMultMatrix(const float *matrix)
+{
+	Context* cc = cm.currentContext();
+	
+	// matrix multiplication is done in operator* overload of struct matrix4x4
+	// cc->setCurrentMatrix(&(cc->getCurrentMatrix() * matrix));
+}
 
 void sglTranslate(float x, float y, float z) {}
 
@@ -158,17 +187,42 @@ void sglRotate2D(float angle, float centerx, float centery) {}
 
 void sglRotateY(float angle) {}
 
-void sglOrtho(float left, float right, float bottom, float top, float near, float far) {}
+void sglOrtho(float left, float right, float bottom, float top, float near, float far)
+{
+	matrix4x4 m;
+
+	// TODO: Find out why (not only because OpenGL specified so in glOrtho)
+	m[0]	= 2 / (right - left);
+	m[5]	= 2 / (top - bottom);
+	m[10]	= -2 / (far - near);
+
+	m[3]	= (right + left)/(left - right);
+	m[7]	= (top + bottom)/(bottom - top);
+	m[11]	= (far + near)/(near - far);
+	m[15]	= 1.0f;
+
+	sglMultMatrix(m.toPointer());
+}
 
 void sglFrustum(float left, float right, float bottom, float top, float near, float far) {}
 
-void sglViewport(int x, int y, int width, int height) {}
+void sglViewport(int x, int y, int width, int height)
+{
+	if (width <= 0 || height <= 0)
+	{
+		setErrCode( SGL_INVALID_VALUE );
+		return;
+	}
+
+	Context* cc = cm.currentContext();
+
+	cc->setViewport(x, y);
+}
 
 //---------------------------------------------------------------------------
 // Attribute functions
 //---------------------------------------------------------------------------
 
-// TODO:
 void sglColor3f(float r, float g, float b)
 {
 	cm.currentContext()->setCurrentColor(r, g, b);
@@ -176,15 +230,30 @@ void sglColor3f(float r, float g, float b)
 
 void sglAreaMode(sglEAreaMode mode) {}
 
-// TODO:
 void sglPointSize(float size)
 {
 	cm.currentContext()->setPointSize(size);
 }
 
-void sglEnable(sglEEnableFlags cap) {}
+void sglEnable(sglEEnableFlags cap)
+{
+	switch (cap)
+	{
+		case SGL_DEPTH_TEST:
+			cm.currentContext()->depthTest(true);
+			break;
+	}
+}
 
-void sglDisable(sglEEnableFlags cap) {}
+void sglDisable(sglEEnableFlags cap)
+{
+	switch (cap)
+	{
+		case SGL_DEPTH_TEST:
+			cm.currentContext()->depthTest(false);
+			break;
+	}
+}
 
 //---------------------------------------------------------------------------
 // RayTracing oriented functions

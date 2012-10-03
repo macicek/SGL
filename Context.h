@@ -1,10 +1,14 @@
 #include "sgl\sgl.h"
 #include <vector>
 #include <iostream>
+#include <memory>
+#include <ctime>
 
 typedef		unsigned char	uint8;
 typedef		unsigned short	uint16;
 typedef		unsigned int	uint32;
+
+typedef		std::pair<int, int>	viewport;
 
 struct color_rgba
 {
@@ -29,13 +33,21 @@ struct vertex
 		vertex(float x, float y) : _x(x), _y(y), _z(0.0f) {}
 		vertex(float x, float y, float z) : _x(x), _y(y), _z(z) {}
 		
-		float x(){ return _x; }
-		float y(){ return _y; }
-		float z(){ return _z; }
+		float x() const { return _x; }
+		float y() const { return _y; }
+		float z() const { return _z; }
+
+		bool operator==(const vertex& v)
+		{
+			if (_x == v.x() && _y == v.y() && _z == v.z())
+				return true;
+		}
 
 	private:
 		float _x, _y, _z;
 };
+
+typedef		std::vector<vertex>::iterator VertexIterator;
 
 struct circle
 {
@@ -43,13 +55,77 @@ struct circle
 		circle(float x, float y, float radius) : _x(x), _y(y), _z(0.0f), _r(radius) {}
 		circle(float x, float y, float z, float radius) : _x(x), _y(y), _z(z), _r(radius) {} 
 
-		float x(){ return _x; }
-		float y(){ return _y; }
-		float z(){ return _z; }
-		float radius(){ return _r; }
+		float x() const { return _x; }
+		float y() const { return _y; }
+		float z() const { return _z; }
+		float radius() const { return _r; }
 
 	private:
 		float _x, _y, _z, _r;
+};
+
+struct matrix4x4
+{
+	public:
+		matrix4x4()
+		{
+			for (int i = 0; i < 16; ++i)
+				_container[i] = 0.0f;
+		}
+
+		float get(int c) const { return _container[c]; }
+		float get(uint8 x, uint8 y) const { return _container[y * 4 + x]; }
+		void set(uint8 x, uint8 y, float value){ _container[y * 4 + x] = value; }
+		
+		void set(uint8 c, float value){ _container[c] = value; }
+		float& operator[](int pos)
+		{
+			return _container[pos];
+		}
+
+
+		matrix4x4& operator= (const matrix4x4& a)
+		{
+			for (int i = 0; i < 16; ++i)
+				_container[i] = a.get(i);
+		}
+
+		matrix4x4 operator* (const matrix4x4& a) const
+		{
+			matrix4x4 result;
+
+			for (int c = 0; c < 16; ++c)
+			{
+				float tmp = 0.0f;
+				for (int i = 0; i < 4; ++i)
+						tmp += ( get(i, c / 4) * a.get(c % 4, i) );
+
+				result.set(c, tmp);
+			}
+						
+			return result;		
+		}
+
+		matrix4x4 operator* (const float* a) const
+		{
+			matrix4x4 result;
+
+			for (int c = 0; c < 16; ++c)
+			{
+				float tmp = 0.0f;
+				for (int i = 0; i < 4; ++i)
+						tmp += ( get(i, c / 4) * a[c/4 * 4 + c%4] );
+
+				result.set(c, tmp);
+			}
+						
+			return result;		
+		}
+
+		const float* toPointer() { return _container; }
+
+	private:
+		float _container[16];
 };
 
 /// A context class.
@@ -77,7 +153,7 @@ class Context
 		/**
 			Called when deleting a context. Frees all used memory.
 		*/
-		~Context();
+		~Context(){ };
 
 		/// Returns pointer to the color buffer.
 		/**
@@ -180,18 +256,13 @@ class Context
 			Based on vertices inside vertex buffer (must be 2), calculates points using Bressenham algorithm
 			and inserts them into memory.
 		*/
-		void rasterizeLine()
+		void rasterizeLineSegment(vertex start, vertex end)
 		{
-			uint32 size = static_cast<uint32>(_pointSize/2);
+			float c_0	= 2 * ( (end.y()) - start.y() );
+			float c_1	= c_0 - 2 * ( end.x() - start.x() );
+			float p		= c_0 - end.x() - start.x();
 
-			vertex start = _vertexBuffer.front();
-			vertex end = _vertexBuffer.back();
-
-			float c_0 = 2 * ( (end.y()) - start.y() );
-			float c_1 = c_0 - 2 * ( end.x() - start.x() );
-			float p = c_0 - end.x() - start.x();
-
-			setPixel(static_cast<uint32>(start.x()), static_cast<uint32>(start.y()));
+			setPixel( static_cast<uint32>(start.x()), static_cast<uint32>(start.y()) );
 			
 			uint32 y_i = static_cast<uint32>(start.y());
 			for (uint32 x_i = static_cast<uint32>(start.x() + 1); x_i <= static_cast<uint32>(end.x()); ++x_i)
@@ -205,6 +276,44 @@ class Context
 				}
 				setPixel(x_i, y_i);
 			}
+		}
+
+		void rasterizeLine()
+		{
+			rasterizeLineSegment(_vertexBuffer.front(), _vertexBuffer.back());
+		}
+
+		void rasterizeLineStrip()
+		{
+			VertexIterator old;
+			for (VertexIterator it = _vertexBuffer.begin(); it != _vertexBuffer.end(); ++it)
+			{
+				if (it == _vertexBuffer.begin())
+				{
+					old = it;
+					continue;
+				}
+
+				rasterizeLineSegment(*old, *it);
+				old = it;
+			}
+		}
+
+		void rasterizeLineLoop()
+		{
+			VertexIterator old;
+			for (VertexIterator it = _vertexBuffer.begin(); it != _vertexBuffer.end(); ++it)
+			{
+				if (it == _vertexBuffer.begin())
+				{
+					old = it;
+					continue;
+				}
+
+				rasterizeLineSegment(*old, *it);
+				old = it;
+			}
+			rasterizeLineSegment(*old, _vertexBuffer.front());
 		}
 
 		/// Inserts a circle into memory
@@ -241,6 +350,25 @@ class Context
 			_colorBuffer[_w * y + x] = color;
 		}
 
+		/**
+			Sets a mode in which we operate when multiplying matrices.
+			
+			@param mode[in] Mode to apply matrix transformation.
+		*/
+		void		setMatrixMode( sglEMatrixMode mode ){ _currentMatrixMode = mode; }
+
+		sglEMatrixMode getMatrixMode(){ return _currentMatrixMode; }
+
+		void		depthTest(bool value){ _depthTest = value; }
+
+		void		setViewport(int width, int height){ _viewport = std::make_pair(width, height); }
+		viewport	getViewport(){ return _viewport; }
+
+		matrix4x4	getCurrentMatrix(){ return *_currentMatrix; }
+		const float*		getCurrentMatrixPointer(){ return _currentMatrix->toPointer(); }
+		void		setCurrentMatrix(matrix4x4* matrix){ _currentMatrix = matrix; }
+		
+
 	private:
 		int _w, _h;
 		
@@ -250,6 +378,11 @@ class Context
 		color_rgba				_currentColor;
 		std::vector<vertex>		_vertexBuffer;
 		sglEElementType			_drawingMode;
+		bool					_depthTest;
+		viewport				_viewport;
+		matrix4x4*				_currentMatrix;
+
+		sglEMatrixMode			_currentMatrixMode;
 
 };
 
@@ -267,10 +400,13 @@ class ContextManager
 		void setCurrentContext(uint32 id){ _currentContext = _contextContainer[id]; }
 
 		uint32 contextId(){ return _contextContainer.size()-1; }
-		void destroyContext(uint32 id){ _contextContainer.erase(_contextContainer.begin()+id); } 
+		void destroyContext(uint32 id)
+		{
+			delete _contextContainer[id];
+			_contextContainer.erase(_contextContainer.begin()+id); 
+		} 
 
 	private:
 		Context* _currentContext;
 		std::vector<Context*> _contextContainer;
 };
-
