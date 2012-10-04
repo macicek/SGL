@@ -8,6 +8,10 @@ typedef		unsigned char	uint8;
 typedef		unsigned short	uint16;
 typedef		unsigned int	uint32;
 
+typedef		char	int8;
+typedef		short	int16;
+typedef		int		int32;
+
 typedef		std::pair<int, int>	viewport;
 
 struct color_rgba
@@ -36,6 +40,10 @@ struct vertex
 		float x() const { return _x; }
 		float y() const { return _y; }
 		float z() const { return _z; }
+
+		void setX(float x){ _x = x; }
+		void setY(float y){ _y = y; }
+		void setZ(float z){ _z = z; }
 
 		bool operator==(const vertex& v)
 		{
@@ -162,7 +170,8 @@ class Context
 
 			@return Color buffer pointer.
 		*/
-		float* getColorBufferPointer(){ return (float*) _colorBuffer; }
+		float*			getColorBufferPointer()
+		{ return (float*) _colorBuffer; }
 
 		/// Sets the color used for drawing.
 		/**
@@ -170,7 +179,9 @@ class Context
 
 			@param color[in] RGBA color value.
 		*/
-		void setCurrentColor(color_rgba color){ _currentColor = color; }
+		void			setCurrentColor(color_rgba color)
+		{ _currentColor = color; }
+		
 		/// Sets the color used for drawing.
 		/**
 			Sets the color currently used for drawing inside the current context.
@@ -179,7 +190,8 @@ class Context
 			@param g[in] Green channel value.
 			@param b[in] Blue channel value.
 		*/
-		void setCurrentColor(float r, float g, float b){ _currentColor = color_rgba(r, g, b); }
+		void			setCurrentColor(float r, float g, float b)
+		{ _currentColor = color_rgba(r, g, b); }
 
 		/// Sets the point size used for drawing.
 		/**
@@ -187,7 +199,7 @@ class Context
 
 			@param size[in] Point size in pixels.
 		*/
-		void setPointSize(float size){ _pointSize = size; }
+		void			setPointSize(float size){ _pointSize = size; }
 
 		/// Sets drawing mode.
 		/** 
@@ -195,7 +207,7 @@ class Context
 
 			@param mode[in] Element type to use for drawing.
 		*/
-		void setDrawingMode(sglEElementType mode){ _drawingMode = mode; }
+		void			setDrawingMode(sglEElementType mode){ _drawingMode = mode; }
 
 		/// Returns currently used drawing mode.
 		/**
@@ -209,7 +221,7 @@ class Context
 		/**
 			Clears the vertex buffer storing all the vertices used to draw the current element and calls appropriate destructors.
 		*/
-		void clearVertexBuffer(){ _vertexBuffer.clear(); }
+		void			clearVertexBuffer(){ _vertexBuffer.clear(); }
 
 		/// Adds a vertex inside the vertex container.
 		/**
@@ -217,13 +229,13 @@ class Context
 
 			@param vertex[in] A vertex.
 		*/
-		void addVertex(vertex v){ _vertexBuffer.push_back(v); }
+		void			addVertex(vertex v){ _vertexBuffer.push_back(v); }
 
 		/// Inserts points into memory
 		/**
 			Inserts all the vertices inside vertex buffer as points with given point size into memory
 		*/
-		void rasterizePoints()
+		void			rasterizePoints()
 		{
 			uint32 size = static_cast<uint32>(_pointSize/2);
 
@@ -251,39 +263,68 @@ class Context
 			}
 		}
 
-		/// Inserts a line into memory
+		/// Inserts a line segment into memory
 		/**
 			Based on vertices inside vertex buffer (must be 2), calculates points using Bressenham algorithm
-			and inserts them into memory.
-		*/
-		void rasterizeLineSegment(vertex start, vertex end)
-		{
-			float c_0	= 2 * ( (end.y()) - start.y() );
-			float c_1	= c_0 - 2 * ( end.x() - start.x() );
-			float p		= c_0 - end.x() - start.x();
-
-			setPixel( static_cast<uint32>(start.x()), static_cast<uint32>(start.y()) );
+			and inserts them into memory. 
 			
-			uint32 y_i = static_cast<uint32>(start.y());
-			for (uint32 x_i = static_cast<uint32>(start.x() + 1); x_i <= static_cast<uint32>(end.x()); ++x_i)
+			Note that in case the absolute value of Y coord rises faster, than the absolute value of X coord
+			(in the I quadrant its angle towards X axis is over 45deg), we swap the X coord with the Y coord and
+			the other way around. Also when the end vertex is closer to [0, 0], we swap the end vertex with the
+			start vertex.
+
+			Also instead of using division, we use bit shift to divite by 2.
+
+			@param start[in] Starting vertex.
+			@param end[in] Ending vertex.
+		*/
+		void		rasterizeLineSegment(vertex start, vertex end)
+		{
+			int32 y_2 = static_cast<int32>( end.y() );
+			int32 y_1 = static_cast<int32>( start.y() );
+
+			int32 x_2 = static_cast<int32>( end.x() );
+			int32 x_1 = static_cast<int32>( start.x() );
+
+			const bool over45 = (std::abs(end.y() - start.y()) > std::abs(end.x() - start.x()));
+			if (over45)
 			{
-				if (p < 0)
-					p += c_0;
-				else
+				std::swap(x_1, y_1);
+				std::swap(x_2, y_2);
+			}
+ 
+			if (x_1 > x_2)
+			{
+				std::swap(x_1, x_2);
+				std::swap(y_1, y_2);
+			}
+ 
+			const int32 dx = x_2 - x_1;
+			const int32 dy = std::abs(y_2 - y_1);
+ 
+			int32 err = 0;
+			const int32 y_step = (y_1 < y_2) ? 1 : -1;
+			for (; x_1 < x_2; ++x_1)
+			{
+				over45 ? setPixel( y_1, x_1 ) : setPixel( x_1, y_1 );
+				err += dy;
+
+				if ( ( err << 1 ) >= dx)
 				{
-					p += c_1;
-					++y_i;
+					y_1 += y_step;
+					err -= dx;
 				}
-				setPixel(x_i, y_i);
 			}
 		}
 
-		void rasterizeLine()
+		/// Calls rasterization for one segment
+		void			rasterizeLine()
 		{
 			rasterizeLineSegment(_vertexBuffer.front(), _vertexBuffer.back());
 		}
 
-		void rasterizeLineStrip()
+		/// Calls rasterization for a line strip
+		void			rasterizeLineStrip()
 		{
 			VertexIterator old;
 			for (VertexIterator it = _vertexBuffer.begin(); it != _vertexBuffer.end(); ++it)
@@ -299,28 +340,21 @@ class Context
 			}
 		}
 
-		void rasterizeLineLoop()
+		/// Calls rasterization for a line loop
+		/**
+			Line loop behaves the same as a line strip except there is an extra line from end to start.
+		*/
+		void			rasterizeLineLoop()
 		{
-			VertexIterator old;
-			for (VertexIterator it = _vertexBuffer.begin(); it != _vertexBuffer.end(); ++it)
-			{
-				if (it == _vertexBuffer.begin())
-				{
-					old = it;
-					continue;
-				}
-
-				rasterizeLineSegment(*old, *it);
-				old = it;
-			}
-			rasterizeLineSegment(*old, _vertexBuffer.front());
+			rasterizeLineStrip();
+			rasterizeLineSegment(_vertexBuffer.back(), _vertexBuffer.front());
 		}
 
 		/// Inserts a circle into memory
 		/**
 			Based on vertices inside vertex buffer, calculates points using Bressenham algorithm
 		*/
-		void rasterizeCircle()
+		void			rasterizeCircle()
 		{
 
 		}
@@ -332,7 +366,7 @@ class Context
 			@param x[in] X coordinate.
 			@param y[in] Y coordinate.
 		*/
-		void setPixel(uint32 x, uint32 y)
+		void			setPixel(uint32 x, uint32 y)
 		{
 			setColorBuffer(x, y, _currentColor);
 		}
@@ -345,7 +379,7 @@ class Context
 			@param y[in] Y coordinate.
 			@param color[in] A color.
 		*/
-		void setColorBuffer(uint32 x, uint32 y, color_rgba color)
+		void			setColorBuffer(uint32 x, uint32 y, color_rgba color)
 		{
 			_colorBuffer[_w * y + x] = color;
 		}
@@ -355,18 +389,29 @@ class Context
 			
 			@param mode[in] Mode to apply matrix transformation.
 		*/
-		void		setMatrixMode( sglEMatrixMode mode ){ _currentMatrixMode = mode; }
+		void			setMatrixMode( sglEMatrixMode mode )
+		{ _currentMatrixMode = mode; }
 
-		sglEMatrixMode getMatrixMode(){ return _currentMatrixMode; }
+		sglEMatrixMode	getMatrixMode()
+		{ return _currentMatrixMode; }
 
-		void		depthTest(bool value){ _depthTest = value; }
+		void			setViewport(int width, int height)
+		{ _viewport = std::make_pair(width, height); }
 
-		void		setViewport(int width, int height){ _viewport = std::make_pair(width, height); }
-		viewport	getViewport(){ return _viewport; }
+		viewport		getViewport()
+		{ return _viewport; }
 
-		matrix4x4	getCurrentMatrix(){ return *_currentMatrix; }
-		const float*		getCurrentMatrixPointer(){ return _currentMatrix->toPointer(); }
-		void		setCurrentMatrix(matrix4x4* matrix){ _currentMatrix = matrix; }
+		void			depthTest(bool value)
+		{ _depthTest = value; }
+
+		matrix4x4		getCurrentMatrix()
+		{ return *_currentMatrix; }
+
+		const float*	getCurrentMatrixPointer()
+		{ return _currentMatrix->toPointer(); }
+
+		void			setCurrentMatrix(matrix4x4* matrix)
+		{ _currentMatrix = matrix; }
 		
 
 	private:
