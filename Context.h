@@ -1,4 +1,5 @@
 #include "sgl\sgl.h"
+
 #include <vector>
 #include <iostream>
 #include <memory>
@@ -13,6 +14,13 @@ typedef		short	int16;
 typedef		int		int32;
 
 typedef		std::pair<int, int>	viewport;
+
+enum Matrices
+{
+	M_MVP,
+	M_MODELVIEW,
+	M_PROJECTION
+};
 
 struct color_rgba
 {
@@ -31,6 +39,7 @@ struct color_rgba
 		float _r, _g, _b;
 };
 
+struct matrix4x4; // forward declaration
 struct vertex
 {
 	public:
@@ -49,6 +58,11 @@ struct vertex
 		{
 			if (_x == v.x() && _y == v.y() && _z == v.z())
 				return true;
+		}
+
+		vertex& operator*=(const matrix4x4& m)
+		{
+			return *this;
 		}
 
 	private:
@@ -81,7 +95,7 @@ struct matrix4x4
 				_container[i] = 0.0f;
 		}
 
-		float get(int c) const { return _container[c]; }
+		// float get(int c) const { return _container[c]; }
 		float get(uint8 x, uint8 y) const { return _container[y * 4 + x]; }
 		void set(uint8 x, uint8 y, float value){ _container[y * 4 + x] = value; }
 		
@@ -90,12 +104,18 @@ struct matrix4x4
 		{
 			return _container[pos];
 		}
+		float operator[](int pos) const
+		{
+			return _container[pos];
+		}
 
 
 		matrix4x4& operator= (const matrix4x4& a)
 		{
 			for (int i = 0; i < 16; ++i)
-				_container[i] = a.get(i);
+				_container[i] = a[i];
+
+			return *this;
 		}
 
 		matrix4x4 operator* (const matrix4x4& a) const
@@ -128,6 +148,14 @@ struct matrix4x4
 			}
 						
 			return result;		
+		}
+
+		void setIdentityMatrix()
+		{
+			_container[0] = 1.0f;
+			_container[5] = 1.0f;
+			_container[10] = 1.0f;
+			_container[15] = 1.0f;
 		}
 
 		const float* toPointer() { return _container; }
@@ -229,7 +257,33 @@ class Context
 
 			@param vertex[in] A vertex.
 		*/
-		void			addVertex(vertex v){ _vertexBuffer.push_back(v); }
+		void			addVertex(vertex v)
+		{ 
+			MVPTransform(v);
+			normalize(v);
+
+			_vertexBuffer.push_back(v);
+		}
+
+		void			MVPTransform(vertex& v) //  MVP : Model-View-Projection
+		{
+			if (_updateMVPMneeded)
+				callMVPMupdate();
+
+			v *= *_matrix[M_MVP];
+		}
+
+		void			MVPMupdate()
+		{
+			_updateMVPMneeded = true;
+		}
+
+		void			normalize(vertex& v)
+		{
+			v.setX( (v.x() + 1) * _viewport.first / 2 + _viewport.first );
+			v.setY( (v.y() + 1) * _viewport.second / 2 + _viewport.second );
+		}
+
 
 		/// Inserts points into memory
 		/**
@@ -354,9 +408,40 @@ class Context
 		/**
 			Based on vertices inside vertex buffer, calculates points using Bressenham algorithm
 		*/
-		void			rasterizeCircle()
+		void			rasterizeCircle(vertex center, uint32 radius)
 		{
+			//vertex center = _vertexBuffer.front();
+            //vertex point = _vertexBuffer.back();
 
+            int cx = center.x();
+            int cy = center.y();
+            //int px = point.x;
+            //int py = point.y;
+
+            //int radius = (int) sqrt((px-cx)*(px-cx)+(py-cy)*(py-cy));
+
+            int bal = -radius;
+
+            int xoffset = 0;
+            int yoffset = radius;
+
+            while(xoffset <= yoffset){
+                setPixel(cx+xoffset, cy+yoffset);
+                setPixel(cx+xoffset, cy-yoffset);
+                setPixel(cx+yoffset, cy+xoffset);
+                setPixel(cx+yoffset, cy-xoffset);
+                setPixel(cx-xoffset, cy+yoffset);
+                setPixel(cx-xoffset, cy-yoffset);
+                setPixel(cx-yoffset, cy+xoffset);
+                setPixel(cx-yoffset, cy-xoffset);
+
+                int tmpBal = bal + ( xoffset << 1 ) + 1;
+                if(tmpBal >= 0){
+                    yoffset--;
+                    bal = bal - ( yoffset << 1 );
+                }
+                xoffset++;
+            }
 		}
 
 		/// Sets a given pixel
@@ -411,8 +496,19 @@ class Context
 		{ return _currentMatrix->toPointer(); }
 
 		void			setCurrentMatrix(matrix4x4* matrix)
-		{ _currentMatrix = matrix; }
+		{ 
+			delete _currentMatrix;
+			_currentMatrix = matrix; 
+		}
 		
+
+	protected:
+		void callMVPMupdate()
+		{
+			*_matrix[M_MVP] = ( *_matrix[M_PROJECTION] ) * ( *_matrix[M_MODELVIEW] );
+
+			_updateMVPMneeded = false;
+		}
 
 	private:
 		int _w, _h;
@@ -424,8 +520,11 @@ class Context
 		std::vector<vertex>		_vertexBuffer;
 		sglEElementType			_drawingMode;
 		bool					_depthTest;
+		bool					_updateMVPMneeded;
 		viewport				_viewport;
 		matrix4x4*				_currentMatrix;
+
+		matrix4x4*				_matrix[3];
 
 		sglEMatrixMode			_currentMatrixMode;
 

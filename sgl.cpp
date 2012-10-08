@@ -131,7 +131,6 @@ void sglVertex4f(float x, float y, float z, float w) {}
 
 void sglVertex3f(float x, float y, float z) {}
 
-// TODO:
 void sglVertex2f(float x, float y)
 {
 	cm.currentContext()->addVertex(vertex(x, y));
@@ -160,6 +159,10 @@ void sglLoadIdentity(void)
 {
 	Context* cc = cm.currentContext();
 
+	matrix4x4* IM = new matrix4x4;
+	IM->setIdentityMatrix();
+	cc->setCurrentMatrix(IM);
+
 	switch ( cc->getMatrixMode() )
 	{
 		case SGL_PROJECTION:
@@ -176,7 +179,7 @@ void sglMultMatrix(const float *matrix)
 	Context* cc = cm.currentContext();
 	
 	// matrix multiplication is done in operator* overload of struct matrix4x4
-	// cc->setCurrentMatrix(&(cc->getCurrentMatrix() * matrix));
+	cc->setCurrentMatrix(&matrix4x4(cc->getCurrentMatrix() * matrix));
 }
 
 void sglTranslate(float x, float y, float z) {}
@@ -191,7 +194,7 @@ void sglOrtho(float left, float right, float bottom, float top, float near, floa
 {
 	matrix4x4 m;
 
-	// TODO: Find out why (not only because OpenGL specified so in glOrtho)
+	// TODO: add documentation !
 	m[0]	= 2 / (right - left);
 	m[5]	= 2 / (top - bottom);
 	m[10]	= -2 / (far - near);
