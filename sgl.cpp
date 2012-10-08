@@ -67,7 +67,8 @@ void sglFinish(void)
 
 int sglCreateContext(int width, int height)
 {
-	if(cm.getNumberOfContexts() >= 33){ //should support at least 32 contexts
+	if(cm.contextId() >= 33)
+	{ //should support at least 32 contexts
 		setErrCode( SGL_OUT_OF_RESOURCES );
 		return -1;
 	}
@@ -162,12 +163,6 @@ void sglVertex2f(float x, float y)
 
 void sglCircle(float x, float y, float z, float radius) {}
 
-void sglCircle(float x, float y, float z, float radius) {
-
-
-
-}
-
 void sglEllipse(float x, float y, float z, float a, float b) {}
 
 void sglArc(float x, float y, float z, float radius, float from, float to) {}
@@ -220,7 +215,8 @@ void sglRotate2D(float angle, float centerx, float centery) {}
 void sglRotateY(float angle) {}
 
 
-void sglOrtho(float left, float right, float bottom, float top, float near, float far) {}
+void sglOrtho(float left, float right, float bottom, float top, float near, float far)
+{
 	matrix4x4 m;
 	// TODO: add documentation !
 	m[0]	= 2 / (right - left);
@@ -265,11 +261,14 @@ void sglEnable(sglEEnableFlags cap)
 		case SGL_DEPTH_TEST:
 			cm.currentContext()->depthTest(true);
 			break;
-	if(cc->isInCycle()){
+	}
+	
+	if (cc->isInCycle())
+	{
 		setErrCode(SGL_INVALID_OPERATION);
 		return;
 	}
-}}
+}
 
 void sglDisable(sglEEnableFlags cap)
 {
@@ -278,12 +277,7 @@ void sglDisable(sglEEnableFlags cap)
 		case SGL_DEPTH_TEST:
 			cm.currentContext()->depthTest(false);
 			break;
-	if(size <= 0){
-		setErrCode(SGL_INVALID_VALUE);
-		return;
 	}
-
-	cc->setPointSize(size);
 }
 
 

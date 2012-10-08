@@ -500,6 +500,16 @@ class Context
 			delete _currentMatrix;
 			_currentMatrix = matrix; 
 		}
+
+		bool isInCycle()
+		{
+			return _inCycle;
+		}
+
+		void setInCycle(bool value)
+		{
+			_inCycle = value;
+		}
 		
 
 	protected:
@@ -527,6 +537,8 @@ class Context
 		matrix4x4*				_matrix[3];
 
 		sglEMatrixMode			_currentMatrixMode;
+
+		bool					_inCycle;
 
 };
 
