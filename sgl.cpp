@@ -57,11 +57,8 @@ const char* sglGetErrorString(sglEErrorCode error)
 
 static ContextManager cm;
 
-
-
 void sglInit(void) 
 {
-	
 }
 
 void sglFinish(void)
@@ -70,7 +67,17 @@ void sglFinish(void)
 
 int sglCreateContext(int width, int height)
 {
+	if(cm.getNumberOfContexts() >= 33){ //should support at least 32 contexts
+		setErrCode( SGL_OUT_OF_RESOURCES );
+		return -1;
+	}
+
 	Context* tmp = new Context(width, height);
+
+	if(!tmp){
+		setErrCode( SGL_OUT_OF_MEMORY );
+		return -1; 
+	}
 
 	return cm.addContext(tmp);
 }
@@ -96,16 +103,32 @@ void sglClear(unsigned what) {}
 // TODO:
 void sglBegin(sglEElementType mode)
 {
+	if(mode >= SGL_LAST_ELEMENT_TYPE){
+		setErrCode(SGL_INVALID_ENUM);
+		return;
+	}
+
 	Context* cc = cm.currentContext();
+
+	if(cc->isInCycle()){
+		setErrCode( SGL_INVALID_OPERATION );
+		return;
+	}
 	
 	cc->setDrawingMode(mode);
-	cc->clearVertexBuffer();
+	cc->setInCycle(true);
+	//cc->clearVertexBuffer();
 }
 
 void sglEnd(void)
 {
-
 	Context* cc = cm.currentContext();
+
+	if(!cc->isInCycle()){
+		setErrCode( SGL_INVALID_OPERATION );
+		return;
+	}
+
 	switch (sglEElementType mode = cc->getDrawingMode())
 	{
 		case SGL_POINTS:
@@ -123,8 +146,9 @@ void sglEnd(void)
 		case SGL_LINE_LOOP:
 			cc->rasterizeLineLoop();
 			break;
-	}
+			cc->rasterizeLineStrip();	}
 	cc->clearVertexBuffer();
+	cc->setInCycle(false);
 }
 
 void sglVertex4f(float x, float y, float z, float w) {}
@@ -138,6 +162,12 @@ void sglVertex2f(float x, float y)
 
 void sglCircle(float x, float y, float z, float radius) {}
 
+void sglCircle(float x, float y, float z, float radius) {
+
+
+
+}
+
 void sglEllipse(float x, float y, float z, float a, float b) {}
 
 void sglArc(float x, float y, float z, float radius, float from, float to) {}
@@ -150,7 +180,6 @@ void sglMatrixMode( sglEMatrixMode mode )
 {
 	cm.currentContext()->setMatrixMode(mode);
 }
-
 void sglPushMatrix(void) {}
 
 void sglPopMatrix(void) {}
@@ -190,10 +219,9 @@ void sglRotate2D(float angle, float centerx, float centery) {}
 
 void sglRotateY(float angle) {}
 
-void sglOrtho(float left, float right, float bottom, float top, float near, float far)
-{
-	matrix4x4 m;
 
+void sglOrtho(float left, float right, float bottom, float top, float near, float far) {}
+	matrix4x4 m;
 	// TODO: add documentation !
 	m[0]	= 2 / (right - left);
 	m[5]	= 2 / (top - bottom);
@@ -209,22 +237,12 @@ void sglOrtho(float left, float right, float bottom, float top, float near, floa
 
 void sglFrustum(float left, float right, float bottom, float top, float near, float far) {}
 
-void sglViewport(int x, int y, int width, int height)
-{
-	if (width <= 0 || height <= 0)
-	{
-		setErrCode( SGL_INVALID_VALUE );
-		return;
-	}
-
-	Context* cc = cm.currentContext();
-
-	cc->setViewport(x, y);
-}
+void sglViewport(int x, int y, int width, int height) {}
 
 //---------------------------------------------------------------------------
 // Attribute functions
 //---------------------------------------------------------------------------
+
 
 void sglColor3f(float r, float g, float b)
 {
@@ -233,10 +251,12 @@ void sglColor3f(float r, float g, float b)
 
 void sglAreaMode(sglEAreaMode mode) {}
 
+
 void sglPointSize(float size)
 {
 	cm.currentContext()->setPointSize(size);
 }
+	Context* cc = cm.currentContext();
 
 void sglEnable(sglEEnableFlags cap)
 {
@@ -245,8 +265,11 @@ void sglEnable(sglEEnableFlags cap)
 		case SGL_DEPTH_TEST:
 			cm.currentContext()->depthTest(true);
 			break;
+	if(cc->isInCycle()){
+		setErrCode(SGL_INVALID_OPERATION);
+		return;
 	}
-}
+}}
 
 void sglDisable(sglEEnableFlags cap)
 {
@@ -255,8 +278,17 @@ void sglDisable(sglEEnableFlags cap)
 		case SGL_DEPTH_TEST:
 			cm.currentContext()->depthTest(false);
 			break;
+	if(size <= 0){
+		setErrCode(SGL_INVALID_VALUE);
+		return;
 	}
+
+	cc->setPointSize(size);
 }
+
+
+
+
 
 //---------------------------------------------------------------------------
 // RayTracing oriented functions
