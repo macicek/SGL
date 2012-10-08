@@ -7,6 +7,7 @@
 #include "Context.h"
 #include "sgl.h"
 
+
 /// Current error code.
 static sglEErrorCode _libStatus = SGL_NO_ERROR;
 
@@ -57,11 +58,8 @@ const char* sglGetErrorString(sglEErrorCode error)
 
 static ContextManager cm;
 
-
-
 void sglInit(void) 
 {
-	
 }
 
 void sglFinish(void)
@@ -70,7 +68,17 @@ void sglFinish(void)
 
 int sglCreateContext(int width, int height)
 {
+	if(cm.getNumberOfContexts() >= 33){ //should support at least 32 contexts
+		setErrCode( SGL_OUT_OF_RESOURCES );
+		return -1;
+	}
+
 	Context* tmp = new Context(width, height);
+
+	if(!tmp){
+		setErrCode( SGL_OUT_OF_MEMORY );
+		return -1; 
+	}
 
 	return cm.addContext(tmp);
 }
@@ -96,16 +104,32 @@ void sglClear(unsigned what) {}
 // TODO:
 void sglBegin(sglEElementType mode)
 {
+	if(mode >= SGL_LAST_ELEMENT_TYPE){
+		setErrCode(SGL_INVALID_ENUM);
+		return;
+	}
+
 	Context* cc = cm.currentContext();
+
+	if(cc->isInCycle()){
+		setErrCode( SGL_INVALID_OPERATION );
+		return;
+	}
 	
 	cc->setDrawingMode(mode);
-	cc->clearVertexBuffer();
+	cc->setInCycle(true);
+	//cc->clearVertexBuffer();
 }
 
 void sglEnd(void)
 {
-
 	Context* cc = cm.currentContext();
+
+	if(!cc->isInCycle()){
+		setErrCode( SGL_INVALID_OPERATION );
+		return;
+	}
+
 	switch (sglEElementType mode = cc->getDrawingMode())
 	{
 		case SGL_POINTS:
@@ -115,16 +139,9 @@ void sglEnd(void)
 		case SGL_LINES:
 			cc->rasterizeLine();
 			break;
-
-		case SGL_LINE_STRIP:
-			cc->rasterizeLineStrip();
-			break;
-
-		case SGL_LINE_LOOP:
-			cc->rasterizeLineLoop();
-			break;
 	}
 	cc->clearVertexBuffer();
+	cc->setInCycle(false);
 }
 
 void sglVertex4f(float x, float y, float z, float w) {}
@@ -137,7 +154,11 @@ void sglVertex2f(float x, float y)
 	cm.currentContext()->addVertex(vertex(x, y));
 }
 
-void sglCircle(float x, float y, float z, float radius) {}
+void sglCircle(float x, float y, float z, float radius) {
+
+
+
+}
 
 void sglEllipse(float x, float y, float z, float a, float b) {}
 
@@ -147,37 +168,17 @@ void sglArc(float x, float y, float z, float radius, float from, float to) {}
 // Transform functions
 //---------------------------------------------------------------------------
 
-void sglMatrixMode( sglEMatrixMode mode )
-{
-	cm.currentContext()->setMatrixMode(mode);
-}
+void sglMatrixMode( sglEMatrixMode mode ) {}
 
 void sglPushMatrix(void) {}
 
 void sglPopMatrix(void) {}
 
-void sglLoadIdentity(void)
-{
-	Context* cc = cm.currentContext();
-
-	switch ( cc->getMatrixMode() )
-	{
-		case SGL_PROJECTION:
-			break;
-		case SGL_MODELVIEW:
-			break;
-	}
-}
+void sglLoadIdentity(void) {}
 
 void sglLoadMatrix(const float *matrix) {}
 
-void sglMultMatrix(const float *matrix)
-{
-	Context* cc = cm.currentContext();
-	
-	// matrix multiplication is done in operator* overload of struct matrix4x4
-	// cc->setCurrentMatrix(&(cc->getCurrentMatrix() * matrix));
-}
+void sglMultMatrix(const float *matrix) {}
 
 void sglTranslate(float x, float y, float z) {}
 
@@ -187,42 +188,17 @@ void sglRotate2D(float angle, float centerx, float centery) {}
 
 void sglRotateY(float angle) {}
 
-void sglOrtho(float left, float right, float bottom, float top, float near, float far)
-{
-	matrix4x4 m;
-
-	// TODO: Find out why (not only because OpenGL specified so in glOrtho)
-	m[0]	= 2 / (right - left);
-	m[5]	= 2 / (top - bottom);
-	m[10]	= -2 / (far - near);
-
-	m[3]	= (right + left)/(left - right);
-	m[7]	= (top + bottom)/(bottom - top);
-	m[11]	= (far + near)/(near - far);
-	m[15]	= 1.0f;
-
-	sglMultMatrix(m.toPointer());
-}
+void sglOrtho(float left, float right, float bottom, float top, float near, float far) {}
 
 void sglFrustum(float left, float right, float bottom, float top, float near, float far) {}
 
-void sglViewport(int x, int y, int width, int height)
-{
-	if (width <= 0 || height <= 0)
-	{
-		setErrCode( SGL_INVALID_VALUE );
-		return;
-	}
-
-	Context* cc = cm.currentContext();
-
-	cc->setViewport(x, y);
-}
+void sglViewport(int x, int y, int width, int height) {}
 
 //---------------------------------------------------------------------------
 // Attribute functions
 //---------------------------------------------------------------------------
 
+// TODO:
 void sglColor3f(float r, float g, float b)
 {
 	cm.currentContext()->setCurrentColor(r, g, b);
@@ -230,30 +206,27 @@ void sglColor3f(float r, float g, float b)
 
 void sglAreaMode(sglEAreaMode mode) {}
 
+// TODO:
 void sglPointSize(float size)
 {
-	cm.currentContext()->setPointSize(size);
+	Context* cc = cm.currentContext();
+
+	if(cc->isInCycle()){
+		setErrCode(SGL_INVALID_OPERATION);
+		return;
+	}
+
+	if(size <= 0){
+		setErrCode(SGL_INVALID_VALUE);
+		return;
+	}
+
+	cc->setPointSize(size);
 }
 
-void sglEnable(sglEEnableFlags cap)
-{
-	switch (cap)
-	{
-		case SGL_DEPTH_TEST:
-			cm.currentContext()->depthTest(true);
-			break;
-	}
-}
+void sglEnable(sglEEnableFlags cap) {}
 
-void sglDisable(sglEEnableFlags cap)
-{
-	switch (cap)
-	{
-		case SGL_DEPTH_TEST:
-			cm.currentContext()->depthTest(false);
-			break;
-	}
-}
+void sglDisable(sglEEnableFlags cap) {}
 
 //---------------------------------------------------------------------------
 // RayTracing oriented functions
