@@ -10,45 +10,46 @@
 /// Current error code.
 static sglEErrorCode _libStatus = SGL_NO_ERROR;
 
-static inline void setErrCode(sglEErrorCode c) 
+static inline void setErrCode( sglEErrorCode c ) 
 {
-  if(_libStatus==SGL_NO_ERROR)
-    _libStatus = c;
+	if(_libStatus == SGL_NO_ERROR)
+		_libStatus = c;
 }
 
 //---------------------------------------------------------------------------
 // sglGetError()
 //---------------------------------------------------------------------------
-sglEErrorCode sglGetError(void) 
+sglEErrorCode sglGetError( void ) 
 {
-  sglEErrorCode ret = _libStatus;
-  _libStatus = SGL_NO_ERROR;
-  return ret;
+	sglEErrorCode ret = _libStatus;
+	_libStatus = SGL_NO_ERROR;
+	return ret;
 }
 
 //---------------------------------------------------------------------------
 // sglGetErrorString()
 //---------------------------------------------------------------------------
-const char* sglGetErrorString(sglEErrorCode error)
+const char* sglGetErrorString( sglEErrorCode error )
 {
-  static const char *errStrigTable[] = 
-  {
-      "Operation succeeded",
-      "Invalid argument(s) to a call",
-      "Invalid enumeration argument(s) to a call",
-      "Invalid call",
-      "Quota of internal resources exceeded",
-      "Internal library error",
-      "Matrix stack overflow",
-      "Matrix stack underflow",
-      "Insufficient memory to finish the requested operation"
-  };
+	static const char *errStrigTable[] = 
+	{
+		"Operation succeeded",
+		"Invalid argument(s) to a call",
+		"Invalid enumeration argument(s) to a call",
+		"Invalid call",
+		"Quota of internal resources exceeded",
+		"Internal library error",
+		"Matrix stack overflow",
+		"Matrix stack underflow",
+		"Insufficient memory to finish the requested operation"
+	};
 
-  if((int)error<(int)SGL_NO_ERROR || (int)error>(int)SGL_OUT_OF_MEMORY ) {
-    return "Invalid value passed to sglGetErrorString()"; 
-  }
+	if( static_cast<int>(error) < static_cast<int>(SGL_NO_ERROR) || static_cast<int>(error) > static_cast<int>(SGL_OUT_OF_MEMORY) )
+	{
+		return "Invalid value passed to sglGetErrorString()"; 
+	}
 
-  return errStrigTable[(int)error];
+	return errStrigTable[static_cast<int>(error)];
 }
 
 //---------------------------------------------------------------------------
@@ -57,39 +58,43 @@ const char* sglGetErrorString(sglEErrorCode error)
 
 static ContextManager cm;
 
-void sglInit(void) 
+void sglInit( void ) 
 {
 }
 
-void sglFinish(void)
+void sglFinish( void )
 {
 }
 
-int sglCreateContext(int width, int height)
+int sglCreateContext( int width, int height )
 {
-	if(cm.contextId() >= 33)
+	if (cm.contextSize() >= 33)
 	{ //should support at least 32 contexts
 		setErrCode( SGL_OUT_OF_RESOURCES );
 		return -1;
 	}
 
-	Context* tmp = new Context(width, height);
-
-	if(!tmp){
+	Context* tmp = new Context( width, height );
+	if ( !tmp )
+	{
 		setErrCode( SGL_OUT_OF_MEMORY );
 		return -1; 
 	}
 
-	return cm.addContext(tmp);
+	return cm.addContext( tmp );
 }
 
-void sglDestroyContext(int id) { cm.destroyContext(id); }
+void sglDestroyContext(int id ) 
+{ cm.destroyContext(id); }
 
-void sglSetContext(int id) { cm.setCurrentContext(id); }
+void sglSetContext( int id ) 
+{ cm.setCurrentContext(id); }
 
-int sglGetContext(void) { return cm.contextId(); }
+int sglGetContext( void ) 
+{ return cm.contextId(); }
 
-float *sglGetColorBufferPointer(void) { return cm.currentContext()->getColorBufferPointer(); }
+float *sglGetColorBufferPointer( void ) 
+{ return cm.currentContext()->getColorBufferPointer(); }
 
 //---------------------------------------------------------------------------
 // Drawing functions
@@ -101,11 +106,11 @@ void sglClearColor (float r, float g, float b, float alpha)
 
 void sglClear(unsigned what) {}
 
-// TODO:
-void sglBegin(sglEElementType mode)
+void sglBegin( sglEElementType mode )
 {
-	if(mode >= SGL_LAST_ELEMENT_TYPE){
-		setErrCode(SGL_INVALID_ENUM);
+	if( mode >= SGL_LAST_ELEMENT_TYPE )
+	{
+		setErrCode( SGL_INVALID_ENUM );
 		return;
 	}
 
@@ -116,21 +121,21 @@ void sglBegin(sglEElementType mode)
 		return;
 	}
 	
-	cc->setDrawingMode(mode);
-	cc->setInCycle(true);
-	//cc->clearVertexBuffer();
+	cc->setInCycle( true );
+	cc->setDrawingMode( mode );
 }
 
 void sglEnd(void)
 {
 	Context* cc = cm.currentContext();
 
-	if(!cc->isInCycle()){
+	if( !cc->isInCycle() )
+	{
 		setErrCode( SGL_INVALID_OPERATION );
 		return;
 	}
 
-	switch (sglEElementType mode = cc->getDrawingMode())
+	switch ( cc->getDrawingMode() )
 	{
 		case SGL_POINTS:
 			cc->rasterizePoints();
@@ -146,8 +151,9 @@ void sglEnd(void)
 
 		case SGL_LINE_LOOP:
 			cc->rasterizeLineLoop();
-			break;
-			cc->rasterizeLineStrip();	}
+			break;	
+	}
+
 	cc->clearVertexBuffer();
 	cc->setInCycle(false);
 }
@@ -158,10 +164,13 @@ void sglVertex3f(float x, float y, float z) {}
 
 void sglVertex2f(float x, float y)
 {
-	cm.currentContext()->addVertex(vertex(x, y));
+	cm.currentContext()->addVertex( vertex(x, y) );
 }
 
-void sglCircle(float x, float y, float z, float radius) {}
+void sglCircle(float x, float y, float z, float radius)
+{
+	cm.currentContext()->addCircle( circle(vertex(x, y, z), radius) );
+}
 
 void sglEllipse(float x, float y, float z, float a, float b) {}
 
@@ -175,35 +184,63 @@ void sglMatrixMode( sglEMatrixMode mode )
 {
 	cm.currentContext()->setMatrixMode(mode);
 }
-void sglPushMatrix(void) {}
 
-void sglPopMatrix(void) {}
+void sglPushMatrix(void)
+{
+	Context* cc = cm.currentContext();
+
+	if ( cc->getMatrixStack().max_size() <= cc->getMatrixStack().size() )
+	{
+		setErrCode( SGL_STACK_OVERFLOW );
+		return;
+	}
+	
+	cc->getMatrixStack().push_back( cc->getCurrentMatrix() );
+	cc->MVPMupdate();
+}
+
+void sglPopMatrix(void)
+{
+	Context* cc = cm.currentContext();
+
+	if ( !cc->getMatrixStack().size() )
+	{
+		setErrCode( SGL_STACK_UNDERFLOW );
+		return;
+	}
+
+	cc->getMatrixStack().pop_back();
+	cc->MVPMupdate();
+}
 
 void sglLoadIdentity(void)
 {
 	Context* cc = cm.currentContext();
+	
+	// identity
+	matrix4x4 im;
+	im.identityMatrix();
 
-	matrix4x4* IM = new matrix4x4;
-	IM->setIdentityMatrix();
-	cc->setCurrentMatrix(IM);
+	cc->setCurrentMatrix(im);
 
 	switch ( cc->getMatrixMode() )
 	{
 		case SGL_PROJECTION:
+			cc->setMatrix( M_PROJECTION );
 			break;
 		case SGL_MODELVIEW:
+			cc->setMatrix( M_MODELVIEW );
 			break;
 	}
 }
 
-void sglLoadMatrix(const float *matrix) {}
+void sglLoadMatrix(const float* matrix) {}
 
-void sglMultMatrix(const float *matrix)
+void sglMultMatrix(const float* matrix)
 {
 	Context* cc = cm.currentContext();
-	
-	// matrix multiplication is done in operator* overload of struct matrix4x4
-	cc->setCurrentMatrix(&matrix4x4(cc->getCurrentMatrix() * matrix));
+
+	cc->setCurrentMatrix(cc->getCurrentMatrix() * matrix);
 }
 
 void sglTranslate(float x, float y, float z) {}
@@ -214,7 +251,6 @@ void sglRotate2D(float angle, float centerx, float centery) {}
 
 void sglRotateY(float angle) {}
 
-
 void sglOrtho(float left, float right, float bottom, float top, float near, float far)
 {
 	matrix4x4 m;
@@ -223,9 +259,9 @@ void sglOrtho(float left, float right, float bottom, float top, float near, floa
 	m[5]	= 2 / (top - bottom);
 	m[10]	= -2 / (far - near);
 
-	m[3]	= (right + left)/(left - right);
-	m[7]	= (top + bottom)/(bottom - top);
-	m[11]	= (far + near)/(near - far);
+	m[3]	= (right + left) / (left - right);
+	m[7]	= (top + bottom) / (bottom - top);
+	m[11]	= (far + near) / (near - far);
 	m[15]	= 1.0f;
 
 	sglMultMatrix(m.toPointer());
@@ -240,42 +276,43 @@ void sglViewport(int x, int y, int width, int height) {}
 //---------------------------------------------------------------------------
 
 
-void sglColor3f(float r, float g, float b)
+void sglColor3f( float r, float g, float b )
 {
-	cm.currentContext()->setCurrentColor(r, g, b);
+	cm.currentContext()->setCurrentColor( r, g, b );
 }
 
 void sglAreaMode(sglEAreaMode mode) {}
 
 
-void sglPointSize(float size)
+void sglPointSize( float size )
 {
-	cm.currentContext()->setPointSize(size);
+	cm.currentContext()->setPointSize( size );
 }
+
+void sglEnable( sglEEnableFlags cap )
+{
 	Context* cc = cm.currentContext();
 
-void sglEnable(sglEEnableFlags cap)
-{
-	switch (cap)
+	switch ( cap )
 	{
 		case SGL_DEPTH_TEST:
-			cm.currentContext()->depthTest(true);
+			cm.currentContext()->depthTest( true );
 			break;
 	}
 	
 	if (cc->isInCycle())
 	{
-		setErrCode(SGL_INVALID_OPERATION);
+		setErrCode( SGL_INVALID_OPERATION );
 		return;
 	}
 }
 
-void sglDisable(sglEEnableFlags cap)
+void sglDisable( sglEEnableFlags cap )
 {
-	switch (cap)
+	switch ( cap )
 	{
 		case SGL_DEPTH_TEST:
-			cm.currentContext()->depthTest(false);
+			cm.currentContext()->depthTest( false );
 			break;
 	}
 }

@@ -74,16 +74,19 @@ typedef		std::vector<vertex>::iterator VertexIterator;
 struct circle
 {
 	public:
-		circle(float x, float y, float radius) : _x(x), _y(y), _z(0.0f), _r(radius) {}
-		circle(float x, float y, float z, float radius) : _x(x), _y(y), _z(z), _r(radius) {} 
+		circle(float x, float y, float radius) : _center(vertex(x, y, 0.0f)), _r(radius) {}
+		circle(float x, float y, float z, float radius) : _center(vertex(x, y, z)), _r(radius) {} 
+		circle(vertex center, float radius) : _center(center), _r(radius) {}
 
-		float x() const { return _x; }
-		float y() const { return _y; }
-		float z() const { return _z; }
+		float x() const { return _center.x(); }
+		float y() const { return _center.y(); }
+		float z() const { return _center.z(); }
 		float radius() const { return _r; }
+		vertex center() const { return _center; }
 
 	private:
-		float _x, _y, _z, _r;
+		vertex _center;
+		float _r;
 };
 
 struct matrix4x4
@@ -150,7 +153,7 @@ struct matrix4x4
 			return result;		
 		}
 
-		void setIdentityMatrix()
+		void identityMatrix()
 		{
 			_container[0] = 1.0f;
 			_container[5] = 1.0f;
@@ -257,20 +260,60 @@ class Context
 
 			@param vertex[in] A vertex.
 		*/
-		void			addVertex(vertex v)
+		void			addVertex( vertex v )
 		{ 
-			MVPTransform(v);
-			normalize(v);
+			MVPTransform( v );
+			normalize( v );
 
-			_vertexBuffer.push_back(v);
+			_vertexBuffer.push_back( v );
 		}
 
-		void			MVPTransform(vertex& v) //  MVP : Model-View-Projection
+		void			addCircle( circle c )
+		{
+			//vertex center = _vertexBuffer.front();
+            //vertex point = _vertexBuffer.back();
+
+			int32 cx = static_cast<int32>(c.center().x());
+			int32 cy = static_cast<int32>(c.center().y());
+            //int px = point.x;
+            //int py = point.y;
+
+            //int radius = (int) sqrt((px-cx)*(px-cx)+(py-cy)*(py-cy));
+
+            int32 bal = static_cast<int32>(-c.radius());
+
+            int32 xoffset = 0;
+            int32 yoffset = static_cast<int32>(c.radius());
+
+            while ( xoffset <= yoffset )
+			{
+                addVertex(vertex( static_cast<float>(cx + xoffset), static_cast<float>(cy + yoffset) ));
+                addVertex(vertex( static_cast<float>(cx + xoffset), static_cast<float>(cy - yoffset) ));
+                addVertex(vertex( static_cast<float>(cx + yoffset), static_cast<float>(cy + xoffset) ));
+                addVertex(vertex( static_cast<float>(cx + yoffset), static_cast<float>(cy - xoffset) ));
+                addVertex(vertex( static_cast<float>(cx - xoffset), static_cast<float>(cy + yoffset) ));
+                addVertex(vertex( static_cast<float>(cx - xoffset), static_cast<float>(cy - yoffset) ));
+                addVertex(vertex( static_cast<float>(cx - yoffset), static_cast<float>(cy + xoffset) ));
+                addVertex(vertex( static_cast<float>(cx - yoffset), static_cast<float>(cy - xoffset) ));
+
+                if ( ( bal + ( xoffset << 1 ) + 1 ) >= 0 )
+				{
+                    yoffset--;
+                    bal = bal - ( yoffset << 1 );
+                }
+                ++xoffset;
+            }
+
+			rasterizePoints();
+			clearVertexBuffer();
+		}
+
+		void			MVPTransform( vertex& v ) //  MVP : Model-View-Projection
 		{
 			if (_updateMVPMneeded)
 				callMVPMupdate();
 
-			v *= *_matrix[M_MVP];
+			v *= _matrix[M_MVP];
 		}
 
 		void			MVPMupdate()
@@ -278,7 +321,7 @@ class Context
 			_updateMVPMneeded = true;
 		}
 
-		void			normalize(vertex& v)
+		void			normalize( vertex& v )
 		{
 			v.setX( (v.x() + 1) * _viewport.first / 2 + _viewport.first );
 			v.setY( (v.y() + 1) * _viewport.second / 2 + _viewport.second );
@@ -291,7 +334,7 @@ class Context
 		*/
 		void			rasterizePoints()
 		{
-			uint32 size = static_cast<uint32>(_pointSize/2);
+			uint32 size = static_cast<uint32>( _pointSize/2 );
 
 			for (std::vector<vertex>::iterator it = _vertexBuffer.begin(); it != _vertexBuffer.end(); ++it)
 			{
@@ -404,46 +447,6 @@ class Context
 			rasterizeLineSegment(_vertexBuffer.back(), _vertexBuffer.front());
 		}
 
-		/// Inserts a circle into memory
-		/**
-			Based on vertices inside vertex buffer, calculates points using Bressenham algorithm
-		*/
-		void			rasterizeCircle(vertex center, uint32 radius)
-		{
-			//vertex center = _vertexBuffer.front();
-            //vertex point = _vertexBuffer.back();
-
-            int cx = center.x();
-            int cy = center.y();
-            //int px = point.x;
-            //int py = point.y;
-
-            //int radius = (int) sqrt((px-cx)*(px-cx)+(py-cy)*(py-cy));
-
-            int bal = -radius;
-
-            int xoffset = 0;
-            int yoffset = radius;
-
-            while(xoffset <= yoffset){
-                setPixel(cx+xoffset, cy+yoffset);
-                setPixel(cx+xoffset, cy-yoffset);
-                setPixel(cx+yoffset, cy+xoffset);
-                setPixel(cx+yoffset, cy-xoffset);
-                setPixel(cx-xoffset, cy+yoffset);
-                setPixel(cx-xoffset, cy-yoffset);
-                setPixel(cx-yoffset, cy+xoffset);
-                setPixel(cx-yoffset, cy-xoffset);
-
-                int tmpBal = bal + ( xoffset << 1 ) + 1;
-                if(tmpBal >= 0){
-                    yoffset--;
-                    bal = bal - ( yoffset << 1 );
-                }
-                xoffset++;
-            }
-		}
-
 		/// Sets a given pixel
 		/*
 			Sets a given pixel with whatever color is currently being used.
@@ -466,7 +469,12 @@ class Context
 		*/
 		void			setColorBuffer(uint32 x, uint32 y, color_rgba color)
 		{
-			_colorBuffer[_w * y + x] = color;
+			uint32 i = _w * y + x;
+			 // we may want to draw outside of viewport, so better check
+			if ( i > _w * _h )
+				return;
+
+			_colorBuffer[i] = color;
 		}
 
 		/**
@@ -481,7 +489,7 @@ class Context
 		{ return _currentMatrixMode; }
 
 		void			setViewport(int width, int height)
-		{ _viewport = std::make_pair(width, height); }
+		{ _viewport = viewport(width, height); }
 
 		viewport		getViewport()
 		{ return _viewport; }
@@ -490,14 +498,13 @@ class Context
 		{ _depthTest = value; }
 
 		matrix4x4		getCurrentMatrix()
-		{ return *_currentMatrix; }
+		{ return _currentMatrix; }
 
 		const float*	getCurrentMatrixPointer()
-		{ return _currentMatrix->toPointer(); }
+		{ return _currentMatrix.toPointer(); }
 
-		void			setCurrentMatrix(matrix4x4* matrix)
+		void			setCurrentMatrix(matrix4x4 matrix)
 		{ 
-			delete _currentMatrix;
 			_currentMatrix = matrix; 
 		}
 
@@ -510,12 +517,20 @@ class Context
 		{
 			_inCycle = value;
 		}
+
+		std::vector<matrix4x4> getMatrixStack()
+		{
+			return _matrixStack;
+		}
+
+		void setMatrix( Matrices m )
+		{ _matrix[m] = _currentMatrix; }
 		
 
 	protected:
 		void callMVPMupdate()
 		{
-			*_matrix[M_MVP] = ( *_matrix[M_PROJECTION] ) * ( *_matrix[M_MODELVIEW] );
+			_matrix[M_MVP] =  _matrix[M_PROJECTION] * _matrix[M_MODELVIEW];
 
 			_updateMVPMneeded = false;
 		}
@@ -528,17 +543,19 @@ class Context
 
 		color_rgba				_currentColor;
 		std::vector<vertex>		_vertexBuffer;
-		sglEElementType			_drawingMode;
-		bool					_depthTest;
-		bool					_updateMVPMneeded;
+		std::vector<matrix4x4>	_matrixStack;
+		
 		viewport				_viewport;
-		matrix4x4*				_currentMatrix;
-
-		matrix4x4*				_matrix[3];
+		
+		matrix4x4				_currentMatrix;
+		matrix4x4				_matrix[3];
 
 		sglEMatrixMode			_currentMatrixMode;
+		sglEElementType			_drawingMode;
 
 		bool					_inCycle;
+		bool					_depthTest;
+		bool					_updateMVPMneeded;
 
 };
 
@@ -546,7 +563,7 @@ class ContextManager
 {
 	public:
 		Context* currentContext(){ return _currentContext; }
-		uint8 addContext(Context* context)
+		uint32 addContext(Context* context)
 		{
 			_contextContainer.push_back(context);
 
@@ -556,10 +573,13 @@ class ContextManager
 		void setCurrentContext(uint32 id){ _currentContext = _contextContainer[id]; }
 
 		uint32 contextId(){ return _contextContainer.size()-1; }
+		uint32 contextSize(){ return _contextContainer.size(); }
+
 		void destroyContext(uint32 id)
 		{
 			delete _contextContainer[id];
-			_contextContainer.erase(_contextContainer.begin()+id); 
+
+			_contextContainer[id] = 0;
 		} 
 
 	private:
