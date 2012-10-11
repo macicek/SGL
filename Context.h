@@ -262,48 +262,45 @@ class Context
 		*/
 		void			addVertex( vertex v )
 		{ 
-			MVPTransform( v );
-			normalize( v );
+			// MVPTransform( v );
+			// normalize( v );
 
 			_vertexBuffer.push_back( v );
 		}
 
 		void			addCircle( circle c )
 		{
-			//vertex center = _vertexBuffer.front();
-            //vertex point = _vertexBuffer.back();
+			uint32	radius = c.radius();
 
-			int32 cx = static_cast<int32>(c.center().x());
-			int32 cy = static_cast<int32>(c.center().y());
-            //int px = point.x;
-            //int py = point.y;
+			// offsets
+			uint32	x = c.radius(), 
+					y = 0;
 
-            //int radius = (int) sqrt((px-cx)*(px-cx)+(py-cy)*(py-cy));
+			uint32	center_x = c.center().x(),
+					center_y = c.center().y();
 
-            int32 bal = static_cast<int32>(-c.radius());
-
-            int32 xoffset = 0;
-            int32 yoffset = static_cast<int32>(c.radius());
-
-            while ( xoffset <= yoffset )
+			int32	cd2 = 0;
+ 
+			while ( x > y )
 			{
-                addVertex(vertex( static_cast<float>(cx + xoffset), static_cast<float>(cy + yoffset) ));
-                addVertex(vertex( static_cast<float>(cx + xoffset), static_cast<float>(cy - yoffset) ));
-                addVertex(vertex( static_cast<float>(cx + yoffset), static_cast<float>(cy + xoffset) ));
-                addVertex(vertex( static_cast<float>(cx + yoffset), static_cast<float>(cy - xoffset) ));
-                addVertex(vertex( static_cast<float>(cx - xoffset), static_cast<float>(cy + yoffset) ));
-                addVertex(vertex( static_cast<float>(cx - xoffset), static_cast<float>(cy - yoffset) ));
-                addVertex(vertex( static_cast<float>(cx - yoffset), static_cast<float>(cy + xoffset) ));
-                addVertex(vertex( static_cast<float>(cx - yoffset), static_cast<float>(cy - xoffset) ));
+				cd2 -= (--x) - (++y);
+				
+				if ( cd2 < 0 ) 
+					cd2 += x++;
 
-                if ( ( bal + ( xoffset << 1 ) + 1 ) >= 0 )
-				{
-                    yoffset--;
-                    bal = bal - ( yoffset << 1 );
-                }
-                ++xoffset;
-            }
+				// draws 8ths of the circle at the same time
+				addVertex( vertex(static_cast<float>(center_x - x), static_cast<float>(center_y - y)) );	// <135; 180>
+				addVertex( vertex(static_cast<float>(center_x - y), static_cast<float>(center_y - x)) );	// <90; 135>
+				addVertex( vertex(static_cast<float>(center_x + y), static_cast<float>(center_y - x)) );	// <45; 90>
+				addVertex( vertex(static_cast<float>(center_x + x), static_cast<float>(center_y - y)) );	// <0; 45>
 
+				addVertex( vertex(static_cast<float>(center_x - x), static_cast<float>(center_y + y)) );	// <180; 225>
+				addVertex( vertex(static_cast<float>(center_x - y), static_cast<float>(center_y + x)) );	// <225; 270>
+				addVertex( vertex(static_cast<float>(center_x + y), static_cast<float>(center_y + x)) );	// <270; 315>
+				addVertex( vertex(static_cast<float>(center_x + x), static_cast<float>(center_y + y )) );	// <315; 0>
+			 } 
+
+			// ... and now we put all the points from the buffer to memory
 			rasterizePoints();
 			clearVertexBuffer();
 		}
@@ -439,7 +436,7 @@ class Context
 
 		/// Calls rasterization for a line loop
 		/**
-			Line loop behaves the same as a line strip except there is an extra line from end to start.
+			Line loop behaves the same as a line strip ecenter_xept there is an extra line from end to start.
 		*/
 		void			rasterizeLineLoop()
 		{
