@@ -13,8 +13,6 @@ typedef		char	int8;
 typedef		short	int16;
 typedef		int		int32;
 
-typedef		std::pair<int, int>	viewport;
-
 enum Matrices
 {
 	M_MVP,
@@ -37,56 +35,6 @@ struct color_rgba
 
 	private:
 		float _r, _g, _b;
-};
-
-struct matrix4x4; // forward declaration
-struct vertex
-{
-	public:
-		vertex(float x, float y) : _x(x), _y(y), _z(0.0f) {}
-		vertex(float x, float y, float z) : _x(x), _y(y), _z(z) {}
-		
-		float x() const { return _x; }
-		float y() const { return _y; }
-		float z() const { return _z; }
-
-		void setX(float x){ _x = x; }
-		void setY(float y){ _y = y; }
-		void setZ(float z){ _z = z; }
-
-		bool operator==(const vertex& v)
-		{
-			if (_x == v.x() && _y == v.y() && _z == v.z())
-				return true;
-		}
-
-		vertex& operator*=(const matrix4x4& m)
-		{
-			return *this;
-		}
-
-	private:
-		float _x, _y, _z;
-};
-
-typedef		std::vector<vertex>::iterator VertexIterator;
-
-struct circle
-{
-	public:
-		circle(float x, float y, float radius) : _center(vertex(x, y, 0.0f)), _r(radius) {}
-		circle(float x, float y, float z, float radius) : _center(vertex(x, y, z)), _r(radius) {} 
-		circle(vertex center, float radius) : _center(center), _r(radius) {}
-
-		float x() const { return _center.x(); }
-		float y() const { return _center.y(); }
-		float z() const { return _center.z(); }
-		float radius() const { return _r; }
-		vertex center() const { return _center; }
-
-	private:
-		vertex _center;
-		float _r;
 };
 
 struct matrix4x4
@@ -153,11 +101,26 @@ struct matrix4x4
 			return result;		
 		}
 
-		void identityMatrix()
+		void loadIdentityMatrix()
 		{
 			_container[0] = 1.0f;
+			_container[1] = 0.0f;
+			_container[2] = 0.0f;
+			_container[3] = 0.0f;
+
+			_container[4] = 0.0f;
 			_container[5] = 1.0f;
+			_container[6] = 0.0f;
+			_container[7] = 0.0f;
+
+			_container[8] = 0.0f;
+			_container[9] = 0.0f;
 			_container[10] = 1.0f;
+			_container[11] = 0.0f;
+
+			_container[12] = 0.0f;
+			_container[13] = 0.0f;
+			_container[14] = 0.0f;
 			_container[15] = 1.0f;
 		}
 
@@ -165,6 +128,62 @@ struct matrix4x4
 
 	private:
 		float _container[16];
+};
+
+struct vertex
+{
+	public:
+		vertex(float x, float y) : _x(x), _y(y), _z(0.0f), _w(1.0f) {}
+		vertex(float x, float y, float z) : _x(x), _y(y), _z(z),  _w(1.0f) {}
+		
+		float x() const { return _x; }
+		float y() const { return _y; }
+		float z() const { return _z; }
+		float w() const { return _w; }
+
+		void setX(float x){ _x = x; }
+		void setY(float y){ _y = y; }
+		void setZ(float z){ _z = z; }
+		void setW(float w){ _w = w; }
+
+		bool operator==(const vertex& v)
+		{
+			if (_x == v.x() && _y == v.y() && _z == v.z())
+				return true;
+		}
+
+		vertex& operator*=(const matrix4x4& m)
+		{
+			_x = _x * m[0] +	_y * m[1] +		_z * m[2] +		_w * m[3];
+			_y = _x * m[4] +	_y * m[5] +		_z * m[6] +		_w * m[7];
+			_z = _x * m[8] +	_y * m[9] +		_z * m[10] +	_w * m[11];
+			_w = _x * m[12] +	_y * m[13] +	_z * m[14] +	_w * m[15];
+
+			return *this;
+		}
+
+	private:
+		float _x, _y, _z, _w;
+};
+
+typedef		std::vector<vertex>::iterator VertexIterator;
+
+struct circle
+{
+	public:
+		circle(float x, float y, float radius) : _center(vertex(x, y, 0.0f)), _r(radius) {}
+		circle(float x, float y, float z, float radius) : _center(vertex(x, y, z)), _r(radius) {} 
+		circle(vertex center, float radius) : _center(center), _r(radius) {}
+
+		float x() const { return _center.x(); }
+		float y() const { return _center.y(); }
+		float z() const { return _center.z(); }
+		float radius() const { return _r; }
+		vertex center() const { return _center; }
+
+	private:
+		vertex _center;
+		float _r;
 };
 
 /// A context class.
@@ -185,7 +204,9 @@ class Context
 		*/
 		Context(uint32 width = 0, uint32 height = 0) : _w(width), _h(height)
 		{ 
-			_colorBuffer = new color_rgba[width * height];
+			_colorBuffer		= new color_rgba[width * height];
+			
+			_updateMVPMneeded	= false;
 		} 
 
 		/// Context destructor.
@@ -262,22 +283,22 @@ class Context
 		*/
 		void			addVertex( vertex v )
 		{ 
-			// MVPTransform( v );
-			// normalize( v );
+			MVPTransform( v );
+			normalize( v );
 
 			_vertexBuffer.push_back( v );
 		}
 
 		void			addCircle( circle c )
 		{
-			uint32	radius = c.radius();
+			uint32	radius = static_cast<uint32>(c.radius());
 
 			// offsets
-			uint32	x = c.radius(), 
+			uint32	x = static_cast<uint32>(c.radius()), 
 					y = 0;
 
-			uint32	center_x = c.center().x(),
-					center_y = c.center().y();
+			uint32	center_x = static_cast<uint32>(c.center().x()),
+					center_y = static_cast<uint32>(c.center().y());
 
 			int32	cd2 = 0;
  
@@ -320,8 +341,8 @@ class Context
 
 		void			normalize( vertex& v )
 		{
-			v.setX( (v.x() + 1) * _viewport.first / 2 + _viewport.first );
-			v.setY( (v.y() + 1) * _viewport.second / 2 + _viewport.second );
+			v.setX( (v.x() + 1) * static_cast<float>(_viewport_w) / 2.0f + v.x() );
+			v.setY( (v.y() + 1) * static_cast<float>(_viewport_h) / 2.0f + v.y() );
 		}
 
 
@@ -436,7 +457,7 @@ class Context
 
 		/// Calls rasterization for a line loop
 		/**
-			Line loop behaves the same as a line strip ecenter_xept there is an extra line from end to start.
+			Line loop behaves the same as a line strip except there is an extra line from end to start.
 		*/
 		void			rasterizeLineLoop()
 		{
@@ -486,10 +507,16 @@ class Context
 		{ return _currentMatrixMode; }
 
 		void			setViewport(int width, int height)
-		{ _viewport = viewport(width, height); }
+		{ 
+			_viewport_w = width;
+			_viewport_h = height;
+		}
 
-		viewport		getViewport()
-		{ return _viewport; }
+		uint32		getViewportWidth()
+		{ return _viewport_w; }
+
+		uint32		getViewportHeight()
+		{ return _viewport_h; }
 
 		void			depthTest(bool value)
 		{ _depthTest = value; }
@@ -522,6 +549,12 @@ class Context
 
 		void setMatrix( Matrices m )
 		{ _matrix[m] = _currentMatrix; }
+
+		void setViewportMin( uint32 min_x, uint32 min_y )
+		{
+			_viewport_min_x = min_x;
+			_viewport_min_y = min_y;
+		}
 		
 
 	protected:
@@ -533,7 +566,7 @@ class Context
 		}
 
 	private:
-		int _w, _h;
+		uint32 _w, _h;
 		
 		color_rgba*				_colorBuffer;
 		float					_pointSize;
@@ -542,7 +575,10 @@ class Context
 		std::vector<vertex>		_vertexBuffer;
 		std::vector<matrix4x4>	_matrixStack;
 		
-		viewport				_viewport;
+		uint32					_viewport_w;
+		uint32					_viewport_h;
+		uint32					_viewport_min_x;
+		uint32					_viewport_min_y;
 		
 		matrix4x4				_currentMatrix;
 		matrix4x4				_matrix[3];

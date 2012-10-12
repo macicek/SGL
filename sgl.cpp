@@ -182,10 +182,10 @@ void sglArc(float x, float y, float z, float radius, float from, float to) {}
 
 void sglMatrixMode( sglEMatrixMode mode )
 {
-	cm.currentContext()->setMatrixMode(mode);
+	cm.currentContext()->setMatrixMode( mode );
 }
 
-void sglPushMatrix(void)
+void sglPushMatrix( void )
 {
 	Context* cc = cm.currentContext();
 
@@ -199,7 +199,7 @@ void sglPushMatrix(void)
 	cc->MVPMupdate();
 }
 
-void sglPopMatrix(void)
+void sglPopMatrix( void )
 {
 	Context* cc = cm.currentContext();
 
@@ -213,15 +213,15 @@ void sglPopMatrix(void)
 	cc->MVPMupdate();
 }
 
-void sglLoadIdentity(void)
+void sglLoadIdentity( void )
 {
 	Context* cc = cm.currentContext();
 	
 	// identity
 	matrix4x4 im;
-	im.identityMatrix();
+	im.loadIdentityMatrix();
 
-	cc->setCurrentMatrix(im);
+	cc->setCurrentMatrix( im );
 
 	switch ( cc->getMatrixMode() )
 	{
@@ -264,12 +264,32 @@ void sglOrtho(float left, float right, float bottom, float top, float near, floa
 	m[11]	= (far + near) / (near - far);
 	m[15]	= 1.0f;
 
-	sglMultMatrix(m.toPointer());
+	sglMultMatrix( m.toPointer() );
+
+	Context* cc = cm.currentContext();
+	switch ( cc->getMatrixMode() )
+	{
+		case SGL_MODELVIEW:
+			cc->setMatrix( M_MODELVIEW );
+			break;
+		case SGL_PROJECTION:
+			cc->setMatrix( M_PROJECTION );
+			break;
+	}
+
+	cc->MVPMupdate();
 }
 
 void sglFrustum(float left, float right, float bottom, float top, float near, float far) {}
 
-void sglViewport(int x, int y, int width, int height) {}
+void sglViewport(int x, int y, int width, int height)
+{
+	Context* cc = cm.currentContext();
+
+	cc->setViewport( width, height );
+	cc->setViewportMin( x, y );
+	
+}
 
 //---------------------------------------------------------------------------
 // Attribute functions
