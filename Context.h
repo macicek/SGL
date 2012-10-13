@@ -76,35 +76,41 @@ struct matrix4x4
 				_container[i] = a[i];
 
 			return *this;
-		}
+		}		
 
-		matrix4x4 operator* (const matrix4x4& a) const
+		matrix4x4 operator* (const matrix4x4& a)
 		{
 			matrix4x4 result;
 
+			uint8 row, col;
 			for (int c = 0; c < 16; ++c)
 			{
-				float tmp = 0.0f;
-				for (int i = 0; i < 4; ++i)
-						tmp += ( get(i, c / 4) * a.get(c % 4, i) );
+				row = (c / 4) * 4;
+				col = c % 4;
 
-				result.set(c, tmp);
+				result[c] += _container[row] * a[col];
+				result[c] += _container[row + 1] * a[col + 4];
+				result[c] += _container[row + 2] * a[col + 8];
+				result[c] += _container[row + 3] * a[col + 12];
 			}
 						
-			return result;		
+			return result;			
 		}
 
 		matrix4x4 operator* (const float* a) const
 		{
 			matrix4x4 result;
 
+			uint8 row, col;
 			for (int c = 0; c < 16; ++c)
 			{
-				float tmp = 0.0f;
-				for (int i = 0; i < 4; ++i)
-						tmp += ( get(i, c / 4) * a[c/4 * 4 + c%4] );
+				row = (c / 4) * 4;
+				col = c % 4;
 
-				result.set(c, tmp);
+				result[c] += _container[row] * a[col];
+				result[c] += _container[row + 1] * a[col + 4];
+				result[c] += _container[row + 2] * a[col + 8];
+				result[c] += _container[row + 3] * a[col + 12];
 			}
 						
 			return result;		
@@ -138,6 +144,30 @@ struct matrix4x4
 	private:
 		float _container[16];
 };
+matrix4x4 operator* (const float* a, const matrix4x4& b)
+{
+	matrix4x4 result;
+	for (int c = 0; c < 16; ++c)
+	{
+		matrix4x4 result;
+
+		uint8 row, col;
+		for (int c = 0; c < 16; ++c)
+		{
+			row = (c / 4) * 4;
+			col = c % 4;
+
+			result[c] += a[row] * b[col];
+			result[c] += a[row + 1] * b[col + 4];
+			result[c] += a[row + 2] * b[col + 8];
+			result[c] += a[row + 3] * b[col + 12];
+		}
+						
+		return result;		
+	}
+						
+	return result;	
+}
 
 struct vertex
 {
@@ -368,6 +398,11 @@ class Context
 				old_x = x;
 				old_y = y;
 			}
+			x = radius * std::sinf( to - PI_F / 2 );
+			y = radius * std::cosf( to - PI_F / 2 );
+
+			addVertex( vertex( center_x - old_x, center_y + old_y ) );
+			addVertex( vertex( center_x - x, center_y + y) );
 
 			rasterizeLineStrip();
 			clearVertexBuffer();
@@ -407,15 +442,26 @@ class Context
 		}
 
 		void			addCircle( circle c )
-		{
-			uint32	radius = static_cast<uint32>(c.radius());
+		{		
+			// center normalization
+			vertex center = c.center();
+			MVPTransform(center);
+			normalize(center);
 
-			// offsets
-			uint32	x = static_cast<uint32>(c.radius()), 
+			// TODO: add documentation
+			float det = ( (_viewport_w / 2) * _matrix[M_MVP][0] * 
+						(_viewport_h / 2) * _matrix[M_MVP][5] ) -
+						( (_viewport_w / 2) * _matrix[M_MVP][1] *
+						(_viewport_h / 2) * _matrix[M_MVP][4] );
+
+			int32 radius = std::sqrtf(det) * c.radius();
+
+			// midpoint alg. (modified bressenham)
+			int32	x = radius, 
 					y = 0;
 
-			uint32	center_x = static_cast<uint32>(c.center().x()),
-					center_y = static_cast<uint32>(c.center().y());
+			int32	center_x = static_cast<int32>(center.x()),
+					center_y = static_cast<int32>(center.y());
 
 			int32	cd2 = 0;
  
@@ -427,20 +473,21 @@ class Context
 					cd2 += x++;
 
 				// draws 8ths of the circle at the same time
-				addVertex( vertex(static_cast<float>(center_x - x), static_cast<float>(center_y - y)) );	// <135; 180>
-				addVertex( vertex(static_cast<float>(center_x - y), static_cast<float>(center_y - x)) );	// <90; 135>
-				addVertex( vertex(static_cast<float>(center_x + y), static_cast<float>(center_y - x)) );	// <45; 90>
-				addVertex( vertex(static_cast<float>(center_x + x), static_cast<float>(center_y - y)) );	// <0; 45>
+				setPixel(static_cast<float>(center_x - x), static_cast<float>(center_y - y) );	// <135; 180>
+				setPixel(static_cast<float>(center_x - y), static_cast<float>(center_y - x) );	// <90; 135>
+				setPixel(static_cast<float>(center_x + y), static_cast<float>(center_y - x) );	// <45; 90>
+				setPixel(static_cast<float>(center_x + x), static_cast<float>(center_y - y) );	// <0; 45>
 
-				addVertex( vertex(static_cast<float>(center_x - x), static_cast<float>(center_y + y)) );	// <180; 225>
-				addVertex( vertex(static_cast<float>(center_x - y), static_cast<float>(center_y + x)) );	// <225; 270>
-				addVertex( vertex(static_cast<float>(center_x + y), static_cast<float>(center_y + x)) );	// <270; 315>
-				addVertex( vertex(static_cast<float>(center_x + x), static_cast<float>(center_y + y )) );	// <315; 0>
+				setPixel(static_cast<float>(center_x - x), static_cast<float>(center_y + y) );	// <180; 225>
+				setPixel(static_cast<float>(center_x - y), static_cast<float>(center_y + x) );	// <225; 270>
+				setPixel(static_cast<float>(center_x + y), static_cast<float>(center_y + x) );	// <270; 315>
+				setPixel(static_cast<float>(center_x + x), static_cast<float>(center_y + y) );	// <315; 0>
+
 			 } 
 
 			// ... and now we put all the points from the buffer to memory
-			rasterizePoints();
-			clearVertexBuffer();
+			// rasterizePoints();
+			// clearVertexBuffer();
 		}
 
 		void			MVPTransform( vertex& v ) //  MVP : Model-View-Projection
@@ -550,9 +597,11 @@ class Context
 		}
 
 		/// Calls rasterization for one segment
-		void			rasterizeLine()
+		void			rasterizeLines()
 		{
-			rasterizeLineSegment(_vertexBuffer.front(), _vertexBuffer.back());
+			VertexIterator old;
+			for (VertexIterator it = _vertexBuffer.begin(); it < _vertexBuffer.end(); it += 2)
+				rasterizeLineSegment(*it, *(it+1));
 		}
 
 		/// Calls rasterization for a line strip
@@ -640,7 +689,7 @@ class Context
 		void			depthTest(bool value)
 		{ _depthTest = value; }
 
-		matrix4x4		getCurrentMatrix()
+		matrix4x4		getCurrentMatrix() const
 		{ return _currentMatrix; }
 
 		const float*	getCurrentMatrixPointer()

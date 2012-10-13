@@ -142,7 +142,7 @@ void sglEnd(void)
 			break;
 
 		case SGL_LINES:
-			cc->rasterizeLine();
+			cc->rasterizeLines();
 			break;
 
 		case SGL_LINE_STRIP:
@@ -215,6 +215,7 @@ void sglPopMatrix( void )
 		return;
 	}
 
+	cc->setCurrentMatrix( cc->getMatrixStack().back() );
 	cc->getMatrixStack().pop_back();
 	cc->MVPMupdate();
 }
@@ -247,15 +248,81 @@ void sglMultMatrix(const float* matrix)
 	Context* cc = cm.currentContext();
 
 	cc->setCurrentMatrix(cc->getCurrentMatrix() * matrix);
+
+	switch ( cc->getMatrixMode() )
+	{
+		case SGL_MODELVIEW:
+			cc->setMatrix( M_MODELVIEW );
+			break;
+
+		case SGL_PROJECTION:
+			cc->setMatrix( M_PROJECTION );
+			break;
+	}
+	cc->MVPMupdate();
 }
 
-void sglTranslate(float x, float y, float z) {}
+// Documentation: http://en.wikipedia.org/wiki/Translation_%28geometry%29#Matrix_representation
+void sglTranslate(float x, float y, float z)
+{
+	matrix4x4 translation_matrix;
 
-void sglScale(float scalex, float scaley, float scalez) {}
+	translation_matrix[3]	= x;
+	translation_matrix[7]	= y;
+	translation_matrix[11]	= z;
 
-void sglRotate2D(float angle, float centerx, float centery) {}
+	translation_matrix[0]	= 1.0f;
+	translation_matrix[5]	= 1.0f;
+	translation_matrix[10]	= 1.0f;
+	translation_matrix[15]	= 1.0f;
 
-void sglRotateY(float angle) {}
+	sglMultMatrix( translation_matrix.toPointer() );
+
+}
+
+// Documentation: http://en.wikipedia.org/wiki/Scaling_%28geometry%29#Matrix_representation
+void sglScale(float scalex, float scaley, float scalez)
+{
+	matrix4x4 scaling_matrix;
+
+	scaling_matrix[0]	= scalex;
+	scaling_matrix[5]	= scaley;
+	scaling_matrix[10]	= scalez;
+	scaling_matrix[15]	= 1.0f;
+
+	sglMultMatrix( scaling_matrix.toPointer() );
+}
+
+// Documentation: http://en.wikipedia.org/wiki/Rotation_matrix
+void sglRotate2D(float angle, float centerx, float centery)
+{
+	matrix4x4 rotation_matrix;
+
+	
+	rotation_matrix[0]	= std::cosf(angle);
+	rotation_matrix[1]	= -std::sinf(angle);
+	rotation_matrix[4]	= std::sinf(angle);
+	rotation_matrix[5]	= std::cosf(angle);
+
+	rotation_matrix[10]	= 1.0f;
+	rotation_matrix[15] = 1.0f;
+
+	sglMultMatrix( rotation_matrix.toPointer() );
+}
+
+void sglRotateY(float angle)
+{
+	matrix4x4 rotation_matrix;
+
+	rotation_matrix[0]	= std::cosf(angle);
+	rotation_matrix[2]	= std::sinf(angle);
+	rotation_matrix[5]	= 1.0f;
+	rotation_matrix[9]	= -std::sinf(angle);
+	rotation_matrix[11] = std::cosf(angle);
+	rotation_matrix[15] = 1.0f;
+
+	sglMultMatrix( rotation_matrix.toPointer() );
+}
 
 void sglOrtho(float left, float right, float bottom, float top, float near, float far)
 {
@@ -271,19 +338,6 @@ void sglOrtho(float left, float right, float bottom, float top, float near, floa
 	m[15]	= 1.0f;
 
 	sglMultMatrix( m.toPointer() );
-
-	Context* cc = cm.currentContext();
-	switch ( cc->getMatrixMode() )
-	{
-		case SGL_MODELVIEW:
-			cc->setMatrix( M_MODELVIEW );
-			break;
-		case SGL_PROJECTION:
-			cc->setMatrix( M_PROJECTION );
-			break;
-	}
-
-	cc->MVPMupdate();
 }
 
 void sglFrustum(float left, float right, float bottom, float top, float near, float far) {}
