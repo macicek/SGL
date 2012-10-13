@@ -172,7 +172,10 @@ void sglCircle(float x, float y, float z, float radius)
 	cm.currentContext()->addCircle( circle(vertex(x, y, z), radius) );
 }
 
-void sglEllipse(float x, float y, float z, float a, float b) {}
+void sglEllipse(float x, float y, float z, float a, float b)
+{
+	cm.currentContext()->addEllipse( ellipse(vertex(x, y, z), a, b) );
+}
 
 void sglArc(float x, float y, float z, float radius, float from, float to) {}
 

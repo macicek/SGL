@@ -13,6 +13,10 @@ typedef		char	int8;
 typedef		short	int16;
 typedef		int		int32;
 
+const float PI_F = 3.14159265358979f;
+const uint8	ELLIPSE_SEGMENTS_I = 40;
+const float ELLIPSE_SEGMENTS_F = 40.0f;
+
 enum Matrices
 {
 	M_MVP,
@@ -178,12 +182,35 @@ struct circle
 		float x() const { return _center.x(); }
 		float y() const { return _center.y(); }
 		float z() const { return _center.z(); }
+
 		float radius() const { return _r; }
+
 		vertex center() const { return _center; }
 
 	private:
 		vertex _center;
 		float _r;
+};
+
+struct ellipse
+{
+	public:
+		ellipse(float x, float y, float z, float a, float b) : _center(vertex(x, y, z)), _a(a), _b(b) {}
+		ellipse(float x, float y, float a, float b) : _center(vertex(x, y, 0.0f)), _a(a), _b(b) {}
+		ellipse(vertex center, float a, float b) : _center(center), _a(a), _b(b) {}
+
+		float x() const { return _center.x(); }
+		float y() const { return _center.y(); }
+		float z() const { return _center.z(); }
+
+		float a() const { return _a; }
+		float b() const { return _b; }
+
+		vertex center() const { return _center; }
+
+	private:
+		vertex _center;
+		float _a, _b;
 };
 
 /// A context class.
@@ -287,6 +314,39 @@ class Context
 			normalize( v );
 
 			_vertexBuffer.push_back( v );
+		}
+
+		void			addEllipse( ellipse e )
+		{
+			const float	a = e.a(),
+						b = e.b();
+
+			float		x = e.x() - a,
+						y = e.y() - b,
+
+						old_x,
+						old_y;
+						
+			const float	center_x = x,
+						center_y = y;
+
+			for (uint8 i = 0; i < ELLIPSE_SEGMENTS_I; ++i)
+			{
+				x = a * std::sinf( (static_cast<float>(i) / ELLIPSE_SEGMENTS_F) * (PI_F * 2.0f) );
+				y = b * std::cosf( (static_cast<float>(i) / ELLIPSE_SEGMENTS_F) * (PI_F * 2.0f) );
+
+				if (i)				
+				{
+					addVertex( vertex( a + center_x + old_x, b + center_y - old_y ) );
+					addVertex( vertex( a + center_x + x, b + center_y - y ) );
+				}
+
+				old_x = x;
+				old_y = y;
+			}
+
+			rasterizeLineLoop();
+			clearVertexBuffer();
 		}
 
 		void			addCircle( circle c )
@@ -555,6 +615,12 @@ class Context
 			_viewport_min_x = min_x;
 			_viewport_min_y = min_y;
 		}
+
+		void setAreaMode( sglEAreaMode mode )
+		{ _currentAreaMode = mode; }
+
+		sglEAreaMode getAreaMode()
+		{ return _currentAreaMode; }
 		
 
 	protected:
@@ -584,6 +650,7 @@ class Context
 		matrix4x4				_matrix[3];
 
 		sglEMatrixMode			_currentMatrixMode;
+		sglEAreaMode			_currentAreaMode;
 		sglEElementType			_drawingMode;
 
 		bool					_inCycle;
