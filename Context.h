@@ -384,6 +384,8 @@ class Context
 
 			float x, y, old_x, old_y;
 
+
+
 			for (float i = from; i < to; i += (to - from) / n_segments)
 			{
 				x = radius * std::sinf( i - PI_F / 2 );
@@ -398,8 +400,8 @@ class Context
 				old_x = x;
 				old_y = y;
 			}
-			x = radius * std::sinf( to - PI_F / 2 );
-			y = radius * std::cosf( to - PI_F / 2 );
+			x = radius * std::sinf( to - PI_F / 2.0f );
+			y = radius * std::cosf( to - PI_F / 2.0f );
 
 			addVertex( vertex( center_x - old_x, center_y + old_y ) );
 			addVertex( vertex( center_x - x, center_y + y) );
@@ -465,6 +467,11 @@ class Context
 
 			int32	cd2 = 0;
  
+			setPixel(static_cast<float>(center_x - radius), static_cast<float>(center_y));
+			setPixel(static_cast<float>(center_x + radius), static_cast<float>(center_y));
+			setPixel(static_cast<float>(center_x),			static_cast<float>(center_y - radius));
+			setPixel(static_cast<float>(center_x),			static_cast<float>(center_y + radius));
+
 			while ( x > y )
 			{
 				cd2 -= (--x) - (++y);

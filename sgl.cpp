@@ -288,6 +288,7 @@ void sglScale(float scalex, float scaley, float scalez)
 	scaling_matrix[0]	= scalex;
 	scaling_matrix[5]	= scaley;
 	scaling_matrix[10]	= scalez;
+
 	scaling_matrix[15]	= 1.0f;
 
 	sglMultMatrix( scaling_matrix.toPointer() );
@@ -298,14 +299,16 @@ void sglRotate2D(float angle, float centerx, float centery)
 {
 	matrix4x4 rotation_matrix;
 
-	
-	rotation_matrix[0]	= std::cosf(angle);
-	rotation_matrix[1]	= -std::sinf(angle);
-	rotation_matrix[4]	= std::sinf(angle);
-	rotation_matrix[5]	= std::cosf(angle);
+	float s = std::sinf(angle);
+	float c = std::cosf(angle);
+
+	rotation_matrix[0]	= c;
+	rotation_matrix[1]	= -s;
+	rotation_matrix[4]	= s;
+	rotation_matrix[5]	= c;
 
 	rotation_matrix[10]	= 1.0f;
-	rotation_matrix[15] = 1.0f;
+	rotation_matrix[15]	= 1.0f;
 
 	sglMultMatrix( rotation_matrix.toPointer() );
 }
