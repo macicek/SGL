@@ -2,20 +2,25 @@
 
 #include <vector>
 #include <iostream>
-#include <memory>
-#include <ctime>
 
+// Type definitions
 typedef		unsigned char	uint8;
 typedef		unsigned short	uint16;
 typedef		unsigned int	uint32;
 
-typedef		char	int8;
-typedef		short	int16;
-typedef		int		int32;
+typedef		char			int8;
+typedef		short			int16;
+typedef		int				int32;
 
-const float PI_F = 3.14159265358979f;
-const uint8	ELLIPSE_SEGMENTS_I = 40;
-const float ELLIPSE_SEGMENTS_F = 40.0f;
+
+// Constants
+const float PI_F				= 3.14159265358979f;
+
+const uint8	ELLIPSE_SEGMENTS_UI	= 40;
+const float ELLIPSE_SEGMENTS_F	= 40.0f;
+
+const uint8 ARC_SEGMENTS_UI		= 40;
+const float ARC_SEGMENTS_F		= 40.0f;
 
 enum Matrices
 {
@@ -213,6 +218,28 @@ struct ellipse
 		float _a, _b;
 };
 
+struct arc
+{
+	public:
+		arc(float x, float y, float z, float radius, float from, float to) : _center(vertex(x, y, z)), _r(radius), _f(from), _t(to) {}
+		arc(float x, float y, float radius, float from, float to) : _center(vertex(x, y, 0.0f)), _r(radius), _f(from), _t(to) {}
+		arc(vertex center, float radius, float from, float to) : _center(center), _r(radius), _f(from), _t(to) {}
+
+		float x() const { return _center.x(); }
+		float y() const { return _center.y(); }
+		float z() const { return _center.z(); }
+
+		float from() const { return _f; }
+		float to() const { return _t; }
+		float radius() const { return _r; }
+
+		vertex center() const { return _center; }
+
+	private:
+		vertex _center;
+		float _r, _f, _t;
+};
+
 /// A context class.
 /**
 	A context class represents a single scene or a context. Multiple contexts can be held in memory at the
@@ -316,6 +343,36 @@ class Context
 			_vertexBuffer.push_back( v );
 		}
 
+		void			addArc( arc a )
+		{
+			const float from		= a.from(),
+						to			= a.to(),
+						radius		= a.radius(),
+						n_segments	= std::ceilf( ARC_SEGMENTS_F * (to - from) / (2.0f * PI_F) ),
+						center_x	= a.x(),
+						center_y	= a.y();
+
+			float x, y, old_x, old_y;
+
+			for (float i = from; i < to; i += (to - from) / n_segments)
+			{
+				x = radius * std::sinf( i - PI_F / 2 );
+				y = radius * std::cosf( i - PI_F / 2 );
+
+				if (i > from)
+				{
+					addVertex( vertex( center_x - old_x, center_y + old_y ) );
+					addVertex( vertex( center_x - x, center_y + y) );
+				}
+
+				old_x = x;
+				old_y = y;
+			}
+
+			rasterizeLineStrip();
+			clearVertexBuffer();
+		}
+
 		void			addEllipse( ellipse e )
 		{
 			const float	a = e.a(),
@@ -330,7 +387,7 @@ class Context
 			const float	center_x = x,
 						center_y = y;
 
-			for (uint8 i = 0; i < ELLIPSE_SEGMENTS_I; ++i)
+			for (uint8 i = 0; i < ELLIPSE_SEGMENTS_UI; ++i)
 			{
 				x = a * std::sinf( (static_cast<float>(i) / ELLIPSE_SEGMENTS_F) * (PI_F * 2.0f) );
 				y = b * std::cosf( (static_cast<float>(i) / ELLIPSE_SEGMENTS_F) * (PI_F * 2.0f) );
@@ -514,6 +571,8 @@ class Context
 				old = it;
 			}
 		}
+
+
 
 		/// Calls rasterization for a line loop
 		/**

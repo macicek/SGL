@@ -177,7 +177,10 @@ void sglEllipse(float x, float y, float z, float a, float b)
 	cm.currentContext()->addEllipse( ellipse(vertex(x, y, z), a, b) );
 }
 
-void sglArc(float x, float y, float z, float radius, float from, float to) {}
+void sglArc(float x, float y, float z, float radius, float from, float to)
+{
+	cm.currentContext()->addArc( arc(vertex(x, y, z), radius, from, to) );
+}
 
 //---------------------------------------------------------------------------
 // Transform functions
