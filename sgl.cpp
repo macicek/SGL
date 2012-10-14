@@ -202,7 +202,6 @@ void sglPushMatrix( void )
 	}
 	
 	cc->getMatrixStack().push_back( cc->getCurrentMatrix() );
-	cc->MVPMupdate();
 }
 
 void sglPopMatrix( void )
@@ -214,10 +213,9 @@ void sglPopMatrix( void )
 		setErrCode( SGL_STACK_UNDERFLOW );
 		return;
 	}
-
+	
 	cc->setCurrentMatrix( cc->getMatrixStack().back() );
 	cc->getMatrixStack().pop_back();
-	cc->MVPMupdate();
 }
 
 void sglLoadIdentity( void )

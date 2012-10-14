@@ -193,10 +193,15 @@ struct vertex
 
 		vertex& operator*=(const matrix4x4& m)
 		{
-			_x = _x * m[0] +	_y * m[1] +		_z * m[2] +		_w * m[3];
-			_y = _x * m[4] +	_y * m[5] +		_z * m[6] +		_w * m[7];
-			_z = _x * m[8] +	_y * m[9] +		_z * m[10] +	_w * m[11];
-			_w = _x * m[12] +	_y * m[13] +	_z * m[14] +	_w * m[15];
+			float	__x = _x,
+					__y = _y,
+					__z = _z,
+					__w = _w;
+
+			_x = __x * m[0] +	__y * m[1] +	__z * m[2] +	__w * m[3];
+			_y = __x * m[4] +	__y * m[5] +	__z * m[6] +	__w * m[7];
+			_z = __x * m[8] +	__y * m[9] +	__z * m[10] +	__w * m[11];
+			_w = __x * m[12] +	__y * m[13] +	__z * m[14] +	__w * m[15];
 
 			return *this;
 		}
@@ -456,7 +461,7 @@ class Context
 						( (_viewport_w / 2) * _matrix[M_MVP][1] *
 						(_viewport_h / 2) * _matrix[M_MVP][4] );
 
-			int32 radius = std::sqrtf(det) * c.radius();
+			int32 radius = static_cast<int32>(std::sqrtf(det) * c.radius());
 
 			// midpoint alg. (modified bressenham)
 			int32	x = radius, 
@@ -467,10 +472,10 @@ class Context
 
 			int32	cd2 = 0;
  
-			setPixel(static_cast<float>(center_x - radius), static_cast<float>(center_y));
-			setPixel(static_cast<float>(center_x + radius), static_cast<float>(center_y));
-			setPixel(static_cast<float>(center_x),			static_cast<float>(center_y - radius));
-			setPixel(static_cast<float>(center_x),			static_cast<float>(center_y + radius));
+			setPixel(static_cast<uint32>(center_x - radius), static_cast<uint32>(center_y));
+			setPixel(static_cast<uint32>(center_x + radius), static_cast<uint32>(center_y));
+			setPixel(static_cast<uint32>(center_x),			 static_cast<uint32>(center_y - radius));
+			setPixel(static_cast<uint32>(center_x),			 static_cast<uint32>(center_y + radius));
 
 			while ( x > y )
 			{
@@ -480,15 +485,15 @@ class Context
 					cd2 += x++;
 
 				// draws 8ths of the circle at the same time
-				setPixel(static_cast<float>(center_x - x), static_cast<float>(center_y - y) );	// <135; 180>
-				setPixel(static_cast<float>(center_x - y), static_cast<float>(center_y - x) );	// <90; 135>
-				setPixel(static_cast<float>(center_x + y), static_cast<float>(center_y - x) );	// <45; 90>
-				setPixel(static_cast<float>(center_x + x), static_cast<float>(center_y - y) );	// <0; 45>
+				setPixel(static_cast<uint32>(center_x - x), static_cast<uint32>(center_y - y) );	// <135; 180>
+				setPixel(static_cast<uint32>(center_x - y), static_cast<uint32>(center_y - x) );	// <90; 135>
+				setPixel(static_cast<uint32>(center_x + y), static_cast<uint32>(center_y - x) );	// <45; 90>
+				setPixel(static_cast<uint32>(center_x + x), static_cast<uint32>(center_y - y) );	// <0; 45>
 
-				setPixel(static_cast<float>(center_x - x), static_cast<float>(center_y + y) );	// <180; 225>
-				setPixel(static_cast<float>(center_x - y), static_cast<float>(center_y + x) );	// <225; 270>
-				setPixel(static_cast<float>(center_x + y), static_cast<float>(center_y + x) );	// <270; 315>
-				setPixel(static_cast<float>(center_x + x), static_cast<float>(center_y + y) );	// <315; 0>
+				setPixel(static_cast<uint32>(center_x - x), static_cast<uint32>(center_y + y) );	// <180; 225>
+				setPixel(static_cast<uint32>(center_x - y), static_cast<uint32>(center_y + x) );	// <225; 270>
+				setPixel(static_cast<uint32>(center_x + y), static_cast<uint32>(center_y + x) );	// <270; 315>
+				setPixel(static_cast<uint32>(center_x + x), static_cast<uint32>(center_y + y) );	// <315; 0>
 
 			 } 
 
@@ -707,7 +712,7 @@ class Context
 			_currentMatrix = matrix; 
 		}
 
-		bool isInCycle()
+		bool isInCycle() const
 		{
 			return _inCycle;
 		}
@@ -725,6 +730,9 @@ class Context
 		void setMatrix( Matrices m )
 		{ _matrix[m] = _currentMatrix; }
 
+		matrix4x4 getMatrix( Matrices m ) const
+		{ return _matrix[m]; }
+
 		void setViewportMin( uint32 min_x, uint32 min_y )
 		{
 			_viewport_min_x = min_x;
@@ -734,7 +742,7 @@ class Context
 		void setAreaMode( sglEAreaMode mode )
 		{ _currentAreaMode = mode; }
 
-		sglEAreaMode getAreaMode()
+		sglEAreaMode getAreaMode() const
 		{ return _currentAreaMode; }
 		
 
