@@ -195,27 +195,37 @@ void sglPushMatrix( void )
 {
 	Context* cc = cm.currentContext();
 
-	if ( cc->getMatrixStack().max_size() <= cc->getMatrixStack().size() )
+	if ( cc->getMatrixStack()->max_size() == cc->getMatrixStack()->size() )
 	{
 		setErrCode( SGL_STACK_OVERFLOW );
 		return;
-	}
+	} 
 	
-	cc->getMatrixStack().push_back( cc->getCurrentMatrix() );
+	cc->getMatrixStack()->push_back( cc->getCurrentMatrix() );
 }
 
 void sglPopMatrix( void )
 {
 	Context* cc = cm.currentContext();
 
-	if ( !cc->getMatrixStack().size() )
+	if ( cc->getMatrixStack()->size() <= 0 )
 	{
 		setErrCode( SGL_STACK_UNDERFLOW );
 		return;
 	}
 	
-	cc->setCurrentMatrix( cc->getMatrixStack().back() );
-	cc->getMatrixStack().pop_back();
+	cc->setCurrentMatrix( cc->getMatrixStack()->back() );
+	switch ( cc->getMatrixMode() )
+	{
+		case SGL_PROJECTION:
+			cc->setMatrix( M_PROJECTION );
+			break;
+		case SGL_MODELVIEW:
+			cc->setMatrix( M_MODELVIEW );
+			break;
+	}
+	cc->getMatrixStack()->pop_back();
+	cc->MVPMupdate();
 }
 
 void sglLoadIdentity( void )

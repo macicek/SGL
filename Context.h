@@ -293,6 +293,7 @@ class Context
 		*/
 		Context(uint32 width = 0, uint32 height = 0) : _w(width), _h(height)
 		{ 
+			_matrixStack		= new std::vector<matrix4x4>;
 			_colorBuffer		= new color_rgba[width * height];
 			
 			_updateMVPMneeded	= false;
@@ -722,7 +723,7 @@ class Context
 			_inCycle = value;
 		}
 
-		std::vector<matrix4x4> getMatrixStack()
+		std::vector<matrix4x4>* getMatrixStack()
 		{
 			return _matrixStack;
 		}
@@ -762,7 +763,7 @@ class Context
 
 		color_rgba				_currentColor;
 		std::vector<vertex>		_vertexBuffer;
-		std::vector<matrix4x4>	_matrixStack;
+		std::vector<matrix4x4>*	_matrixStack;
 		
 		uint32					_viewport_w;
 		uint32					_viewport_h;
