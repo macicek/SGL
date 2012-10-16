@@ -296,11 +296,11 @@ void sglRotateY(float angle)
 {
 	matrix4x4 rotation_matrix;
 
-	rotation_matrix[0]	= std::cosf(angle);
-	rotation_matrix[2]	= std::sinf(angle);
+	rotation_matrix[0]	= cos(angle);
+	rotation_matrix[2]	= sin(angle);
 	rotation_matrix[5]	= 1.0f;
-	rotation_matrix[9]	= -std::sinf(angle);
-	rotation_matrix[11] = std::cosf(angle);
+	rotation_matrix[9]	= -sin(angle);
+	rotation_matrix[11] = cos(angle);
 	rotation_matrix[15] = 1.0f;
 
 	sglMultMatrix( rotation_matrix.ptr() );

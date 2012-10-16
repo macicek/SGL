@@ -1,6 +1,7 @@
 #include "sgl.h"
 #include <vector>
-#include <math.h>
+#include <cstdlib>
+#include <cmath>
 
 // Type definitions
 typedef		unsigned char	uint8;
@@ -724,7 +725,7 @@ class Context
 			int32 x_2 = static_cast<int32>( end.x() );
 			int32 x_1 = static_cast<int32>( start.x() );
 
-			const bool over45 = (abs(end.y() - start.y()) > abs(end.x() - start.x()));
+			const bool over45 = (fabs(end.y() - start.y()) > fabs(end.x() - start.x()));
 			if (over45)
 			{
 				std::swap(x_1, y_1);
