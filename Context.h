@@ -1,7 +1,6 @@
-#include "sgl\sgl.h"
-
+#include "sgl.h"
 #include <vector>
-#include <iostream>
+#include <math.h>
 
 // Type definitions
 typedef		unsigned char	uint8;
@@ -51,8 +50,7 @@ struct matrix4x4
 	public:
 		matrix4x4()
 		{
-			for (int i = 0; i < 16; ++i)
-				_container[i] = 0.0f;
+			null();
 		}
 
 		// float get(int c) const { return _container[c]; }
@@ -60,15 +58,14 @@ struct matrix4x4
 		void set(uint8 x, uint8 y, float value){ _container[y * 4 + x] = value; }
 		
 		void set(uint8 c, float value){ _container[c] = value; }
-		float& operator[](int pos)
+		float& operator[](uint32 pos)
 		{
 			return _container[pos];
 		}
-		float operator[](int pos) const
+		float operator[](uint32 pos) const
 		{
 			return _container[pos];
 		}
-
 
 		matrix4x4& operator= (const matrix4x4& a)
 		{
@@ -82,17 +79,25 @@ struct matrix4x4
 		{
 			matrix4x4 result;
 
-			uint8 row, col;
-			for (int c = 0; c < 16; ++c)
-			{
-				row = (c / 4) * 4;
-				col = c % 4;
+			result[0]	= _container[0] * a[0]		+ _container[1] * a[4]		+ _container[2] * a[8]		+ _container[3] * a[12];
+			result[1]	= _container[0] * a[1]		+ _container[1] * a[5]		+ _container[2] * a[9]		+ _container[3] * a[13];
+			result[2]	= _container[0] * a[2]		+ _container[1] * a[6]		+ _container[2] * a[10]		+ _container[3] * a[14];
+			result[3]	= _container[0] * a[3]		+ _container[1] * a[7]		+ _container[2] * a[11]		+ _container[3] * a[15];
 
-				result[c] += _container[row] * a[col];
-				result[c] += _container[row + 1] * a[col + 4];
-				result[c] += _container[row + 2] * a[col + 8];
-				result[c] += _container[row + 3] * a[col + 12];
-			}
+			result[4]	= _container[4] * a[0]		+ _container[5] * a[4]		+ _container[6] * a[8]		+ _container[7] * a[12];
+			result[5]	= _container[4] * a[1]		+ _container[5] * a[5]		+ _container[6] * a[9]		+ _container[7] * a[13];
+			result[6]	= _container[4] * a[2]		+ _container[5] * a[6]		+ _container[6] * a[10]		+ _container[7] * a[14];
+			result[7]	= _container[4] * a[3]		+ _container[5] * a[7]		+ _container[6] * a[11]		+ _container[7] * a[15];
+
+			result[8]	= _container[8] * a[0]		+ _container[9] * a[4]		+ _container[10] * a[8]		+ _container[11] * a[12];
+			result[9]	= _container[8] * a[1]		+ _container[9] * a[5]		+ _container[10] * a[9]		+ _container[11] * a[13];
+			result[10]	= _container[8] * a[2]		+ _container[9] * a[6]		+ _container[10] * a[10]	+ _container[11] * a[14];
+			result[11]	= _container[8] * a[3]		+ _container[9] * a[7]		+ _container[10] * a[11]	+ _container[11] * a[15];
+
+			result[12]	= _container[12] * a[0]		+ _container[13] * a[4]		+ _container[14] * a[8]		+ _container[15] * a[12];
+			result[13]	= _container[12] * a[1]		+ _container[13] * a[5]		+ _container[14] * a[9]		+ _container[15] * a[13];
+			result[14]	= _container[12] * a[2]		+ _container[13] * a[6]		+ _container[14] * a[10]	+ _container[15] * a[14];
+			result[15]	= _container[12] * a[3]		+ _container[13] * a[7]		+ _container[14] * a[11]	+ _container[15] * a[15];
 						
 			return result;			
 		}
@@ -101,45 +106,158 @@ struct matrix4x4
 		{
 			matrix4x4 result;
 
-			uint8 row, col;
-			for (int c = 0; c < 16; ++c)
-			{
-				row = (c / 4) * 4;
-				col = c % 4;
+			result[0]	= _container[0] * a[0]		+ _container[1] * a[4]		+ _container[2] * a[8]		+ _container[3] * a[12];
+			result[1]	= _container[0] * a[1]		+ _container[1] * a[5]		+ _container[2] * a[9]		+ _container[3] * a[13];
+			result[2]	= _container[0] * a[2]		+ _container[1] * a[6]		+ _container[2] * a[10]		+ _container[3] * a[14];
+			result[3]	= _container[0] * a[3]		+ _container[1] * a[7]		+ _container[2] * a[11]		+ _container[3] * a[15];
 
-				result[c] += _container[row] * a[col];
-				result[c] += _container[row + 1] * a[col + 4];
-				result[c] += _container[row + 2] * a[col + 8];
-				result[c] += _container[row + 3] * a[col + 12];
-			}
+			result[4]	= _container[4] * a[0]		+ _container[5] * a[4]		+ _container[6] * a[8]		+ _container[7] * a[12];
+			result[5]	= _container[4] * a[1]		+ _container[5] * a[5]		+ _container[6] * a[9]		+ _container[7] * a[13];
+			result[6]	= _container[4] * a[2]		+ _container[5] * a[6]		+ _container[6] * a[10]		+ _container[7] * a[14];
+			result[7]	= _container[4] * a[3]		+ _container[5] * a[7]		+ _container[6] * a[11]		+ _container[7] * a[15];
+
+			result[8]	= _container[8] * a[0]		+ _container[9] * a[4]		+ _container[10] * a[8]		+ _container[11] * a[12];
+			result[9]	= _container[8] * a[1]		+ _container[9] * a[5]		+ _container[10] * a[9]		+ _container[11] * a[13];
+			result[10]	= _container[8] * a[2]		+ _container[9] * a[6]		+ _container[10] * a[10]	+ _container[11] * a[14];
+			result[11]	= _container[8] * a[3]		+ _container[9] * a[7]		+ _container[10] * a[11]	+ _container[11] * a[15];
+
+			result[12]	= _container[12] * a[0]		+ _container[13] * a[4]		+ _container[14] * a[8]		+ _container[15] * a[12];
+			result[13]	= _container[12] * a[1]		+ _container[13] * a[5]		+ _container[14] * a[9]		+ _container[15] * a[13];
+			result[14]	= _container[12] * a[2]		+ _container[13] * a[6]		+ _container[14] * a[10]	+ _container[15] * a[14];
+			result[15]	= _container[12] * a[3]		+ _container[13] * a[7]		+ _container[14] * a[11]	+ _container[15] * a[15];
 						
 			return result;		
 		}
 
-		void loadIdentityMatrix()
+		matrix4x4& null()
 		{
-			_container[0] = 1.0f;
-			_container[1] = 0.0f;
-			_container[2] = 0.0f;
-			_container[3] = 0.0f;
+			_container[0]	= 0.0f;
+			_container[1]	= 0.0f;
+			_container[2]	= 0.0f;
+			_container[3]	= 0.0f;
 
-			_container[4] = 0.0f;
-			_container[5] = 1.0f;
-			_container[6] = 0.0f;
-			_container[7] = 0.0f;
+			_container[4]	= 0.0f;
+			_container[5]	= 0.0f;
+			_container[6]	= 0.0f;
+			_container[7]	= 0.0f;
 
-			_container[8] = 0.0f;
-			_container[9] = 0.0f;
-			_container[10] = 1.0f;
-			_container[11] = 0.0f;
+			_container[8]	= 0.0f;
+			_container[9]	= 0.0f;
+			_container[10]	= 0.0f;
+			_container[11]	= 0.0f;
 
-			_container[12] = 0.0f;
-			_container[13] = 0.0f;
-			_container[14] = 0.0f;
-			_container[15] = 1.0f;
+			_container[12]	= 0.0f;
+			_container[13]	= 0.0f;
+			_container[14]	= 0.0f;
+			_container[15]	= 0.0f;
+
+			return *this;
 		}
 
-		const float* toPointer() { return _container; }
+		matrix4x4& identity()
+		{
+			_container[0]	= 1.0f;
+			_container[1]	= 0.0f;
+			_container[2]	= 0.0f;
+			_container[3]	= 0.0f;
+
+			_container[4]	= 0.0f;
+			_container[5]	= 1.0f;
+			_container[6]	= 0.0f;
+			_container[7]	= 0.0f;
+
+			_container[8]	= 0.0f;
+			_container[9]	= 0.0f;
+			_container[10]	= 1.0f;
+			_container[11]	= 0.0f;
+
+			_container[12]	= 0.0f;
+			_container[13]	= 0.0f;
+			_container[14]	= 0.0f;
+			_container[15]	= 1.0f;
+
+			return *this;
+		}
+
+		matrix4x4& translate( float x, float y, float z )
+		{
+			_container[0]	= 1.0f;
+			_container[1]	= 0.0f;
+			_container[2]	= 0.0f;
+			_container[3]	= x;
+
+			_container[4]	= 0.0f;
+			_container[5]	= 1.0f;
+			_container[6]	= 0.0f;
+			_container[7]	= y;
+
+			_container[8]	= 0.0f;
+			_container[9]	= 0.0f;
+			_container[10]	= 0.0f;
+			_container[11]	= z;
+
+			_container[12]	= 0.0f;
+			_container[13]	= 0.0f;
+			_container[14]	= 0.0f;
+			_container[15]	= 1.0f;
+
+			return *this;
+		}
+
+		matrix4x4& rotate( float angle )
+		{
+			float s = sin(angle);
+			float c = cos(angle);
+
+			_container[0]	= c;
+			_container[1]	= -s;
+			_container[2]	= 0.0f;
+			_container[3]	= 0.0f;
+
+			_container[4]	= s;
+			_container[5]	= c;
+			_container[6]	= 0.0f;
+			_container[7]	= 0.0f;
+
+			_container[8]	= 0.0f;
+			_container[9]	= 0.0f;
+			_container[10]	= 0.0f;
+			_container[11]	= 0.0f;
+
+			_container[12]	= 0.0f;
+			_container[13]	= 0.0f;
+			_container[14]	= 0.0f;
+			_container[15]	= 1.0f;
+
+			return *this;
+		}
+
+		matrix4x4& scale( float scale_x, float scale_y, float scale_z )
+		{
+			_container[0]	= scale_x;
+			_container[1]	= 0.0f;
+			_container[2]	= 0.0f;
+			_container[3]	= 0.0f;
+
+			_container[4]	= 0.0f;
+			_container[5]	= scale_y;
+			_container[6]	= 0.0f;
+			_container[7]	= 0.0f;
+
+			_container[8]	= 0.0f;
+			_container[9]	= 0.0f;
+			_container[10]	= scale_z;
+			_container[11]	= 0.0f;
+
+			_container[12]	= 0.0f;
+			_container[13]	= 0.0f;
+			_container[14]	= 0.0f;
+			_container[15]	= 1.0f;
+
+			return *this;
+		}
+
+		const float* ptr() { return _container; }
 
 	private:
 		float _container[16];
@@ -147,25 +265,27 @@ struct matrix4x4
 matrix4x4 operator* (const float* a, const matrix4x4& b)
 {
 	matrix4x4 result;
-	for (int c = 0; c < 16; ++c)
-	{
-		matrix4x4 result;
+	
+	result[0]	= a[0] * b[0]		+ a[1] * b[4]		+ a[2] * b[8]		+ a[3] * b[12];
+	result[1]	= a[0] * b[1]		+ a[1] * b[5]		+ a[2] * b[9]		+ a[3] * b[13];
+	result[2]	= a[0] * b[2]		+ a[1] * b[6]		+ a[2] * b[10]		+ a[3] * b[14];
+	result[3]	= a[0] * b[3]		+ a[1] * b[7]		+ a[2] * b[11]		+ a[3] * b[15];
 
-		uint8 row, col;
-		for (int c = 0; c < 16; ++c)
-		{
-			row = (c / 4) * 4;
-			col = c % 4;
+	result[4]	= a[4] * b[0]		+ a[5] * b[4]		+ a[6] * b[8]		+ a[7] * b[12];
+	result[5]	= a[4] * b[1]		+ a[5] * b[5]		+ a[6] * b[9]		+ a[7] * b[13];
+	result[6]	= a[4] * b[2]		+ a[5] * b[6]		+ a[6] * b[10]		+ a[7] * b[14];
+	result[7]	= a[4] * b[3]		+ a[5] * b[7]		+ a[6] * b[11]		+ a[7] * b[15];
 
-			result[c] += a[row] * b[col];
-			result[c] += a[row + 1] * b[col + 4];
-			result[c] += a[row + 2] * b[col + 8];
-			result[c] += a[row + 3] * b[col + 12];
-		}
-						
-		return result;		
-	}
-						
+	result[8]	= a[8] * b[0]		+ a[9] * b[4]		+ a[10] * b[8]		+ a[11] * b[12];
+	result[9]	= a[8] * b[1]		+ a[9] * b[5]		+ a[10] * b[9]		+ a[11] * b[13];
+	result[10]	= a[8] * b[2]		+ a[9] * b[6]		+ a[10] * b[10]		+ a[11] * b[14];
+	result[11]	= a[8] * b[3]		+ a[9] * b[7]		+ a[10] * b[11]		+ a[11] * b[15];
+
+	result[12]	= a[12] * b[0]		+ a[13] * b[4]		+ a[14] * b[8]		+ a[15] * b[12];
+	result[13]	= a[12] * b[1]		+ a[13] * b[5]		+ a[14] * b[9]		+ a[15] * b[13];
+	result[14]	= a[12] * b[2]		+ a[13] * b[6]		+ a[14] * b[10]		+ a[15] * b[14];
+	result[15]	= a[12] * b[3]		+ a[13] * b[7]		+ a[14] * b[11]		+ a[15] * b[15];
+	
 	return result;	
 }
 
@@ -379,12 +499,19 @@ class Context
 			_vertexBuffer.push_back( v );
 		}
 
+		/// Draws an arc
+		/**
+			Draws an arc based on parameters given in sglArc (center point, radius and from/to angle). It adds pairs
+			of vertices inside vertex buffer and when done it calls line strip rasterization to display an arc.
+
+			@param arc[in] An arc.
+		*/
 		void			addArc( arc a )
 		{
 			const float from		= a.from(),
 						to			= a.to(),
 						radius		= a.radius(),
-						n_segments	= std::ceilf( ARC_SEGMENTS_F * (to - from) / (2.0f * PI_F) ),
+						n_segments	= ceil( ARC_SEGMENTS_F * (to - from) / (2.0f * PI_F) ),
 						center_x	= a.x(),
 						center_y	= a.y();
 
@@ -394,8 +521,8 @@ class Context
 
 			for (float i = from; i < to; i += (to - from) / n_segments)
 			{
-				x = radius * std::sinf( i - PI_F / 2 );
-				y = radius * std::cosf( i - PI_F / 2 );
+				x = radius * sin( i - PI_F / 2 );
+				y = radius * cos( i - PI_F / 2 );
 
 				if (i > from)
 				{
@@ -406,8 +533,8 @@ class Context
 				old_x = x;
 				old_y = y;
 			}
-			x = radius * std::sinf( to - PI_F / 2.0f );
-			y = radius * std::cosf( to - PI_F / 2.0f );
+			x = radius * sin( to - PI_F / 2.0f );
+			y = radius * cos( to - PI_F / 2.0f );
 
 			addVertex( vertex( center_x - old_x, center_y + old_y ) );
 			addVertex( vertex( center_x - x, center_y + y) );
@@ -416,6 +543,14 @@ class Context
 			clearVertexBuffer();
 		}
 
+		/// Draws an ellipse
+		/**
+			Draws an ellipse based on parameters given in sglEllipse (center and a,b - check any geometry
+			math book/wikipedia on what these are. Works the same as addArc( arc ), only adds pairs of
+			vertices for a whole ellipse and then calls line loop rasterization.
+
+			@param ellipse[in] An ellipse.
+		*/
 		void			addEllipse( ellipse e )
 		{
 			const float	a = e.a(),
@@ -432,8 +567,8 @@ class Context
 
 			for (uint8 i = 0; i < ELLIPSE_SEGMENTS_UI; ++i)
 			{
-				x = a * std::sinf( (static_cast<float>(i) / ELLIPSE_SEGMENTS_F) * (PI_F * 2.0f) );
-				y = b * std::cosf( (static_cast<float>(i) / ELLIPSE_SEGMENTS_F) * (PI_F * 2.0f) );
+				x = a * sin( (static_cast<float>(i) / ELLIPSE_SEGMENTS_F) * (PI_F * 2.0f) );
+				y = b * cos( (static_cast<float>(i) / ELLIPSE_SEGMENTS_F) * (PI_F * 2.0f) );
 
 				if (i)				
 				{
@@ -449,6 +584,10 @@ class Context
 			clearVertexBuffer();
 		}
 
+		/// Draws a circle
+		/**					
+			@param circle[in] A circle.
+		*/
 		void			addCircle( circle c )
 		{		
 			// center normalization
@@ -462,7 +601,7 @@ class Context
 						( (_viewport_w / 2) * _matrix[M_MVP][1] *
 						(_viewport_h / 2) * _matrix[M_MVP][4] );
 
-			int32 radius = static_cast<int32>(std::sqrtf(det) * c.radius());
+			int32 radius = static_cast<int32>(sqrt(det) * c.radius());
 
 			// midpoint alg. (modified bressenham)
 			int32	x = radius, 
@@ -503,6 +642,13 @@ class Context
 			// clearVertexBuffer();
 		}
 
+		/// Model-View-Projection Transformation
+		/**
+			In case an MVP update is needed, a Model-View-Projection matrix is recalculated based on stored Modelview and
+			Projection matrices. Then it's applied on a give vertex 
+
+			@param vertex[in] A vertex.
+		*/
 		void			MVPTransform( vertex& v ) //  MVP : Model-View-Projection
 		{
 			if (_updateMVPMneeded)
@@ -518,8 +664,8 @@ class Context
 
 		void			normalize( vertex& v )
 		{
-			v.setX( (v.x() + 1) * static_cast<float>(_viewport_w) / 2.0f + v.x() );
-			v.setY( (v.y() + 1) * static_cast<float>(_viewport_h) / 2.0f + v.y() );
+			v.setX( (v.x() + 1.0f) * static_cast<float>(_viewport_w) / 2.0f + _viewport_min_x );
+			v.setY( (v.y() + 1.0f) * static_cast<float>(_viewport_h) / 2.0f + _viewport_min_y );
 		}
 
 
@@ -578,7 +724,7 @@ class Context
 			int32 x_2 = static_cast<int32>( end.x() );
 			int32 x_1 = static_cast<int32>( start.x() );
 
-			const bool over45 = (std::abs(end.y() - start.y()) > std::abs(end.x() - start.x()));
+			const bool over45 = (abs(end.y() - start.y()) > abs(end.x() - start.x()));
 			if (over45)
 			{
 				std::swap(x_1, y_1);
@@ -592,7 +738,7 @@ class Context
 			}
  
 			const int32 dx = x_2 - x_1;
-			const int32 dy = std::abs(y_2 - y_1);
+			const int32 dy = abs(y_2 - y_1);
  
 			int32 err = 0;
 			const int32 y_step = (y_1 < y_2) ? 1 : -1;
@@ -706,7 +852,7 @@ class Context
 		{ return _currentMatrix; }
 
 		const float*	getCurrentMatrixPointer()
-		{ return _currentMatrix.toPointer(); }
+		{ return _currentMatrix.ptr(); }
 
 		void			setCurrentMatrix(matrix4x4 matrix)
 		{ 

@@ -44,7 +44,7 @@ const char* sglGetErrorString( sglEErrorCode error )
 		"Insufficient memory to finish the requested operation"
 	};
 
-	if( static_cast<int>(error) < static_cast<int>(SGL_NO_ERROR) || static_cast<int>(error) > static_cast<int>(SGL_OUT_OF_MEMORY) )
+	if ( error < SGL_NO_ERROR || error > SGL_OUT_OF_MEMORY )
 	{
 		return "Invalid value passed to sglGetErrorString()"; 
 	}
@@ -234,9 +234,7 @@ void sglLoadIdentity( void )
 	
 	// identity
 	matrix4x4 im;
-	im.loadIdentityMatrix();
-
-	cc->setCurrentMatrix( im );
+	cc->setCurrentMatrix( im.identity() );
 
 	switch ( cc->getMatrixMode() )
 	{
@@ -255,7 +253,7 @@ void sglMultMatrix(const float* matrix)
 {
 	Context* cc = cm.currentContext();
 
-	cc->setCurrentMatrix(cc->getCurrentMatrix() * matrix);
+	cc->setCurrentMatrix( cc->getCurrentMatrix() * matrix );
 
 	switch ( cc->getMatrixMode() )
 	{
@@ -273,52 +271,25 @@ void sglMultMatrix(const float* matrix)
 // Documentation: http://en.wikipedia.org/wiki/Translation_%28geometry%29#Matrix_representation
 void sglTranslate(float x, float y, float z)
 {
-	matrix4x4 translation_matrix;
-
-	translation_matrix[3]	= x;
-	translation_matrix[7]	= y;
-	translation_matrix[11]	= z;
-
-	translation_matrix[0]	= 1.0f;
-	translation_matrix[5]	= 1.0f;
-	translation_matrix[10]	= 1.0f;
-	translation_matrix[15]	= 1.0f;
-
-	sglMultMatrix( translation_matrix.toPointer() );
-
+	matrix4x4 matrix;
+	sglMultMatrix( matrix.translate(x, y, z).ptr() );
 }
 
 // Documentation: http://en.wikipedia.org/wiki/Scaling_%28geometry%29#Matrix_representation
 void sglScale(float scalex, float scaley, float scalez)
 {
-	matrix4x4 scaling_matrix;
-
-	scaling_matrix[0]	= scalex;
-	scaling_matrix[5]	= scaley;
-	scaling_matrix[10]	= scalez;
-
-	scaling_matrix[15]	= 1.0f;
-
-	sglMultMatrix( scaling_matrix.toPointer() );
+	matrix4x4 matrix;
+	sglMultMatrix( matrix.scale(scalex, scaley, scalez).ptr() );
 }
 
 // Documentation: http://en.wikipedia.org/wiki/Rotation_matrix
 void sglRotate2D(float angle, float centerx, float centery)
 {
-	matrix4x4 rotation_matrix;
+	matrix4x4 matrix;
 
-	float s = std::sinf(angle);
-	float c = std::cosf(angle);
-
-	rotation_matrix[0]	= c;
-	rotation_matrix[1]	= -s;
-	rotation_matrix[4]	= s;
-	rotation_matrix[5]	= c;
-
-	rotation_matrix[10]	= 1.0f;
-	rotation_matrix[15]	= 1.0f;
-
-	sglMultMatrix( rotation_matrix.toPointer() );
+	sglMultMatrix( matrix.translate(centerx, centery, 0.0f).ptr() );
+	sglMultMatrix( matrix.rotate(angle).ptr() );
+	sglMultMatrix( matrix.translate(-centerx, -centery, 0.0f).ptr() );
 }
 
 void sglRotateY(float angle)
@@ -332,7 +303,7 @@ void sglRotateY(float angle)
 	rotation_matrix[11] = std::cosf(angle);
 	rotation_matrix[15] = 1.0f;
 
-	sglMultMatrix( rotation_matrix.toPointer() );
+	sglMultMatrix( rotation_matrix.ptr() );
 }
 
 void sglOrtho(float left, float right, float bottom, float top, float near, float far)
@@ -348,7 +319,7 @@ void sglOrtho(float left, float right, float bottom, float top, float near, floa
 	m[11]	= (far + near) / (near - far);
 	m[15]	= 1.0f;
 
-	sglMultMatrix( m.toPointer() );
+	sglMultMatrix( m.ptr() );
 }
 
 void sglFrustum(float left, float right, float bottom, float top, float near, float far) {}
