@@ -1,8 +1,9 @@
 //---------------------------------------------------------------------------
 // sgl.cpp
-// Empty implementation of the SGL (Simple Graphics Library)
+// Implementation of SGL (Simple Graphics Library)
 // Date:  2011/11/1
 // Author: Jaroslav Krivanek, Jiri Bittner CTU Prague
+// Author: Pavel Macenauer, Ondrej Zeman
 //---------------------------------------------------------------------------
 #include "Context.h"
 #include "sgl.h"
@@ -152,6 +153,22 @@ void sglEnd(void)
 		case SGL_LINE_LOOP:
 			cc->rasterizeLineLoop();
 			break;	
+
+		case SGL_POLYGON:
+			// TODO: Polygon rasterization and fill
+			switch ( cc->getAreaMode() )
+			{
+				case SGL_LINE:
+					// TODO: Here implement line rasterization, should be the same as line strip
+					break;
+
+				case SGL_FILL:
+					// TODO: Here implement filling
+					cc->addFilledPolygon();
+					break;
+			}
+			
+			break;
 	}
 
 	cc->clearVertexBuffer();

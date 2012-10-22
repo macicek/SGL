@@ -1,4 +1,5 @@
 #include "sgl.h"
+
 #include <vector>
 #include <cstdlib>
 #include <cmath>
@@ -636,12 +637,33 @@ class Context
 				setPixel(static_cast<uint32>(center_x + y), static_cast<uint32>(center_y + x) );	// <270; 315>
 				setPixel(static_cast<uint32>(center_x + x), static_cast<uint32>(center_y + y) );	// <315; 0>
 
-			 } 
-
-			// ... and now we put all the points from the buffer to memory
-			// rasterizePoints();
-			// clearVertexBuffer();
+			 } 		
 		}
+
+		// TODO: Implement the algorithm itself here
+		/// Draws a filled polygon
+		/**
+			Detailed description
+
+			@parameters
+		*/
+		void			addFilledPolygon( void )
+		{
+			
+		}
+
+		// TODO: Implement edgeBuffer sorting here
+		/// Sorts edge buffer
+		/**
+			Detailed descriptioin
+
+			@parameters
+		*/
+		void			sortEdgeBuffer( void )
+		{
+
+		}
+
 
 		/// Model-View-Projection Transformation
 		/**
@@ -911,6 +933,7 @@ class Context
 		color_rgba				_currentColor;
 		std::vector<vertex>		_vertexBuffer;
 		std::vector<matrix4x4>*	_matrixStack;
+		std::vector<uint32>		_edgeBuffer;
 		
 		uint32					_viewport_w;
 		uint32					_viewport_h;
