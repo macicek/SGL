@@ -23,6 +23,8 @@ const float ELLIPSE_SEGMENTS_F	= 40.0f;
 const uint8 ARC_SEGMENTS_UI		= 40;
 const float ARC_SEGMENTS_F		= 40.0f;
 
+const float Z_BUFFER_INFINITY	= 2.0f;
+
 enum Matrices
 {
 	M_MVP,
@@ -418,8 +420,10 @@ class Context
 			_matrixStack		= new std::vector<matrix4x4>;
 			_colorBuffer		= new color_rgba[width * height];
 			
+			initZBuffer();
+			
 			_updateMVPMneeded	= false;
-		} 
+		} 		
 
 		/// Context destructor.
 		/**
@@ -649,7 +653,7 @@ class Context
 		*/
 		void			addFilledPolygon( void )
 		{
-			
+			// ve vertex b
 		}
 
 		// TODO: Implement edgeBuffer sorting here
@@ -827,6 +831,26 @@ class Context
 			setColorBuffer(x, y, _currentColor);
 		}
 
+		/// Sets a given point (pixel) in 3D space
+		/**
+			Sets a given point in 3D space. We only project in a 2D plane, therefore we check with the
+			z-buffer if the currently displayed pixel is nearer or further than the one we want to draw
+			and if that is so, we redraw the pixel.
+
+			@param x[in] X coordinate.
+			@param y[in] Y coordinate.
+			@param z[in] Depth
+		*/
+		void			setPixel3D(uint32 x, uint32 y, uint32 z)
+		{
+			uint32 pos = y * _w + x;
+			if (z < _zbuffer[pos])
+			{
+				_zbuffer[pos] = z; // update z-buffer
+				setPixel(x, y);
+			}
+		}
+
 		/// Sets a color for a given pixel inside memory
 		/*
 			Sets a specific place inside memory with a given color.
@@ -924,10 +948,21 @@ class Context
 			_updateMVPMneeded = false;
 		}
 
+		void initZBuffer()
+		{
+			uint32 size = _w * _h;
+			_zbuffer = new float[_w * _h];
+
+			for (uint32 i = 0; i < size; ++i)
+				_zbuffer[i] = Z_BUFFER_INFINITY;
+		}
+
 	private:
 		uint32 _w, _h;
 		
 		color_rgba*				_colorBuffer;
+		float*					_zbuffer;
+
 		float					_pointSize;
 
 		color_rgba				_currentColor;

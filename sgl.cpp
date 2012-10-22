@@ -323,10 +323,11 @@ void sglRotateY(float angle)
 	sglMultMatrix( rotation_matrix.ptr() );
 }
 
+// OpenGL documetation: http://msdn.microsoft.com/en-us/library/windows/desktop/dd373965%28v=vs.85%29.aspx
 void sglOrtho(float left, float right, float bottom, float top, float near, float far)
 {
 	matrix4x4 m;
-	// TODO: add documentation !
+	
 	m[0]	= 2 / (right - left);
 	m[5]	= 2 / (top - bottom);
 	m[10]	= -2 / (far - near);
@@ -339,7 +340,21 @@ void sglOrtho(float left, float right, float bottom, float top, float near, floa
 	sglMultMatrix( m.ptr() );
 }
 
-void sglFrustum(float left, float right, float bottom, float top, float near, float far) {}
+// OpenGL documentation: http://msdn.microsoft.com/en-us/library/windows/desktop/dd373537%28v=vs.85%29.aspx
+void sglFrustum(float left, float right, float bottom, float top, float near, float far)
+{
+	matrix4x4 m;
+
+	m[0] = ( 2 * near ) / ( right - left );
+	m[2] = ( right + left ) / ( right - left );
+	m[5] = ( 2 * near ) / ( top - bottom );
+	m[6] = ( top + bottom ) / ( top - bottom );
+	m[10] = -(far + near) / ( far - near );
+	m[11] = -2 * far * near / ( far - near );
+	m[14] = -1.0f;
+
+	sglMultMatrix( m.ptr() );
+}
 
 void sglViewport(int x, int y, int width, int height)
 {
