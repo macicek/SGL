@@ -1,8 +1,11 @@
 #include "sgl.h"
 
 #include <vector>
+#include <list>
+#include <algorithm>
 #include <cstdlib>
 #include <cmath>
+#include <iostream>
 
 // Type definitions
 typedef		unsigned char	uint8;
@@ -377,6 +380,48 @@ struct ellipse
 		float _a, _b;
 };
 
+class PolyLine {
+public:    
+    float x;
+    float deltaX;
+    int startY;
+    int endY;
+    float y;
+    int deltaY;
+    float z;
+    float deltaZ;
+   
+public:    
+    PolyLine(vertex a, vertex b){
+        if(b.y() < a.y()){                      //zajisti ze primky jsou top-down
+            vertex c = a;
+            a = b;
+            b = c;
+        }
+        startY = (int)(a.y()+0.5);
+        endY = (int)(b.y()+0.5);
+        deltaY = endY - startY;
+        deltaX = (b.x() - a.x())/deltaY;
+        deltaZ = (b.z() - a.z())/deltaY;
+        x = a.x();
+        y = startY-1;
+        z = a.z();
+    }
+    
+    vertex getPoint() {
+        return vertex((int)(x+0.5), (int)y, (int)(z+0.5));
+    }
+    
+    void nextStep(){
+        y++;
+        if(y != startY){
+            x += deltaX;
+            z += deltaZ;
+        }
+    } 
+
+};
+
 struct arc
 {
 	public:
@@ -644,6 +689,27 @@ class Context
 			 } 		
 		}
 
+    class BeginingsComparator {
+    public:
+        bool operator () (const PolyLine &o1, const PolyLine &o2) {
+            return o1.startY < o2.startY;
+        }
+    };
+
+    class EndsComparator {
+    public:
+        int operator () (const PolyLine &o1, const PolyLine &o2) {
+            return o1.endY < o2.endY;
+        }
+    };
+
+    class ShuffleComparator {
+    public:
+        int operator () (const PolyLine &o1, const PolyLine &o2) {
+            return o1.x < o2.x;
+        }
+    };
+  
 		// TODO: Implement the algorithm itself here
 		/// Draws a filled polygon
 		/**
@@ -653,8 +719,73 @@ class Context
 		*/
 		void			addFilledPolygon( void )
 		{
-			// ve vertex b
+        std::list<PolyLine &> allLines;
+        std::list<PolyLine &> linesBeginings;
+        std::list<PolyLine &> linesEnds;
+        std::list<PolyLine &> activeLines;
+        
+        
+        allLines.push_back(PolyLine(_vertexBuffer.back(), _vertexBuffer.front()));                
+        for (unsigned i = 1; i < _vertexBuffer.size(); i++) 
+            allLines.push_back(PolyLine(_vertexBuffer[i - 1], _vertexBuffer[i]));
+
+        linesBeginings = allLines;
+        linesEnds = allLines;
+
+        std::sort(linesBeginings.begin(), linesBeginings.end(), BeginingsComparator());
+        std::sort(linesEnds.begin(), linesEnds.end(), EndsComparator());
+
+        //zacatek cyklu vykreslovani - iterujeme podle RADKU
+        //
+
+        int minY = linesBeginings.front().startY;
+        int maxY = linesEnds.back().endY;
+
+        std::list<PolyLine &>::iterator it;
+        for (int y = minY; y < maxY; y++) {
+            //zaktivovani novych hran v aktualnim radku
+            while (!linesBeginings.empty() && linesBeginings.front().startY == y) {
+                activeLines.push_back(linesBeginings.front());
+                linesBeginings.pop_front();
+            }
+            //deaktivovani hran koncicich na aktualnim radku
+            while (!linesEnds.empty() && linesEnds.front().endY == y) {
+                for (it = activeLines.begin(); it != activeLines.end(); ++it) {
+                    if (&(*it) == &linesEnds.front())
+						activeLines.erase(it);
+                }
+                linesEnds.pop_front();
+            }
+
+            for (it = activeLines.begin(); it != activeLines.end(); ++it) {
+                (*it).nextStep();
+            }
+
+            //serazeni linek od leva do prava
+            sortActiveLines(activeLines);
+
+
+            //plneni radku mezi jednotlivymi linkami
+            for (it = activeLines.begin(); it != activeLines.end(); ++it) {
+                vertex t = (*it).getPoint();
+                ++it;
+                fillBetweenPoints(t, (*it).getPoint());
+            }
+        }
 		}
+
+    void sortActiveLines(std::list<PolyLine &> &lines) {
+
+        //shufflesort!!!! TODO
+
+        std::sort(lines.begin(), lines.end(), ShuffleComparator());
+    }
+
+    void fillBetweenPoints(vertex &left, vertex &right) {
+        
+        std::cout << "plnim radek " << left.y() << " na pozicich [" << left.x() << " - " << right.x() << "]\n";
+        
+    }
 
 		// TODO: Implement edgeBuffer sorting here
 		/// Sorts edge buffer
