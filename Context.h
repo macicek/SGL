@@ -1,16 +1,13 @@
-#include "sgl.h"
+#ifndef CONTEXT_H
+#define CONTEXT_H
 
 #include <algorithm>
 #include <vector>
-#include <list>
-#include <map>
-
 #include <cstdlib>
 #include <cmath>
-#include <math.h>
-#include <iostream>
 #include <functional>
 
+#include "sgl.h"
 #include "Mathematics.h"
 
 enum Matrices
@@ -592,20 +589,19 @@ class Context
 
 			@param arc[in] An arc.
 		*/
-		void			addArc( arc a )
+		void			addArc( arc a, bool filled = false )
 		{
 			const float from		= a.from(),
 						to			= a.to(),
 						radius		= a.radius(),
 						n_segments	= ceil( ARC_SEGMENTS_F * (to - from) / (2.0f * PI_F) ),
 						center_x	= a.x(),
-						center_y	= a.y();
+						center_y	= a.y(),
+						c			= (to - from) / n_segments;
 
 			float x, y, old_x, old_y;
-
-
-
-			for (float i = from; i < to; i += (to - from) / n_segments)
+			
+			for (float i = from; i < to; i += c)
 			{
 				x = radius * sin( i - PI_F / 2 );
 				y = radius * cos( i - PI_F / 2 );
@@ -625,7 +621,15 @@ class Context
 			addVertex( vertex( center_x - old_x, center_y + old_y ) );
 			addVertex( vertex( center_x - x, center_y + y) );
 
-			rasterizeLineStrip();
+			if ( filled )
+			{
+				addVertex( vertex( center_x, center_y ) );
+				addFilledPolygon();
+			}
+			else
+			{
+				rasterizeLineStrip();
+			}
 			clearVertexBuffer();
 		}
 
@@ -637,7 +641,7 @@ class Context
 
 			@param ellipse[in] An ellipse.
 		*/
-		void			addEllipse( ellipse e )
+		void			addEllipse( ellipse e, bool filled = false )
 		{
 			const float	a = e.a(),
 						b = e.b();
@@ -666,15 +670,16 @@ class Context
 				old_y = y;
 			}
 
-			rasterizeLineLoop();
+			filled ? addFilledPolygon() : rasterizeLineLoop();
 			clearVertexBuffer();
 		}
 
 		/// Draws a circle
 		/**					
 			@param circle[in] A circle.
+			@param filled[in] To be or not to be FILLED ! - Hamlet (http://en.wikipedia.org/wiki/Hamlet)
 		*/
-		void			addCircle( circle c )
+		void			addCircle( circle c , bool filled = false )
 		{		
 			// center normalization
 			vertex center = c.center();
@@ -698,10 +703,17 @@ class Context
 
 			int32	cd2 = 0;
  
-			setPixel(static_cast<uint32>(center_x - radius), static_cast<uint32>(center_y));
-			setPixel(static_cast<uint32>(center_x + radius), static_cast<uint32>(center_y));
-			setPixel(static_cast<uint32>(center_x),			 static_cast<uint32>(center_y - radius));
-			setPixel(static_cast<uint32>(center_x),			 static_cast<uint32>(center_y + radius));
+			if ( filled )
+			{
+				fillBetweenPoints( center_x - radius, center_x + radius, center_y );
+			}
+			else
+			{
+				setPixel(static_cast<uint32>(center_x - radius), static_cast<uint32>(center_y));
+				setPixel(static_cast<uint32>(center_x + radius), static_cast<uint32>(center_y));
+				setPixel(static_cast<uint32>(center_x),			 static_cast<uint32>(center_y - radius));
+				setPixel(static_cast<uint32>(center_x),			 static_cast<uint32>(center_y + radius));
+			}
 
 			while ( x > y )
 			{
@@ -710,26 +722,42 @@ class Context
 				if ( cd2 < 0 ) 
 					cd2 += x++;
 
-				// draws 8ths of the circle at the same time
-				setPixel(static_cast<uint32>(center_x - x), static_cast<uint32>(center_y - y) );	// <135; 180>
-				setPixel(static_cast<uint32>(center_x - y), static_cast<uint32>(center_y - x) );	// <90; 135>
-				setPixel(static_cast<uint32>(center_x + y), static_cast<uint32>(center_y - x) );	// <45; 90>
-				setPixel(static_cast<uint32>(center_x + x), static_cast<uint32>(center_y - y) );	// <0; 45>
+				if ( filled )
+				{
+					fillBetweenPoints( center_x - x, center_x + x, center_y - y );
+					fillBetweenPoints( center_x - y, center_x + y, center_y + x );
+					fillBetweenPoints( center_x - x, center_x + x, center_y + y );
+					fillBetweenPoints( center_x - y, center_x + y, center_y - x );				
+				}
+				else
+				{
+					// draws 8ths of the circle at the same time
+					setPixel(static_cast<uint32>(center_x - x), static_cast<uint32>(center_y - y) );	// <135; 180>
+					setPixel(static_cast<uint32>(center_x - y), static_cast<uint32>(center_y - x) );	// <90; 135>
+					setPixel(static_cast<uint32>(center_x + y), static_cast<uint32>(center_y - x) );	// <45; 90>
+					setPixel(static_cast<uint32>(center_x + x), static_cast<uint32>(center_y - y) );	// <0; 45>
 
-				setPixel(static_cast<uint32>(center_x - x), static_cast<uint32>(center_y + y) );	// <180; 225>
-				setPixel(static_cast<uint32>(center_x - y), static_cast<uint32>(center_y + x) );	// <225; 270>
-				setPixel(static_cast<uint32>(center_x + y), static_cast<uint32>(center_y + x) );	// <270; 315>
-				setPixel(static_cast<uint32>(center_x + x), static_cast<uint32>(center_y + y) );	// <315; 0>
+					setPixel(static_cast<uint32>(center_x - x), static_cast<uint32>(center_y + y) );	// <180; 225>
+					setPixel(static_cast<uint32>(center_x - y), static_cast<uint32>(center_y + x) );	// <225; 270>
+					setPixel(static_cast<uint32>(center_x + y), static_cast<uint32>(center_y + x) );	// <270; 315>
+					setPixel(static_cast<uint32>(center_x + x), static_cast<uint32>(center_y + y) );	// <315; 0>
+				}
 
 			 } 		
 		}
-
-		// TODO: Implement the algorithm itself here
+	
 		/// Draws a filled polygon
 		/**
-			Detailed description
+			Fills a polygon shaped object based on vertices in vertex buffer. Uses a scan-line fill algorithm.
+			(more info google or here: http://www.cmpe.boun.edu.tr/~sahiner/cmpe460web/FALL2009/scanlinefill.pdf)
 
-			@parameters
+			First it constructs edges of the polygon and pushes them into a non-active buffer. Then it determines
+			the max. and min. y-coordinates and loops incrementally from min to max. Every time it finds a 
+			starting y-coordinate inside the non-active buffer, it adds the edge to the active buffer and removes it
+			from the non-active buffer. The same happens for ending y-coordinates and corresponding edges inside
+			the active buffer.
+
+			While looping it fills segments based on the active buffer.
 		*/
 		void			addFilledPolygon( void )
 		{		       			    	
@@ -797,6 +825,11 @@ class Context
 			}
 			_activeEdges.clear();
 			_nonActiveEdges.clear();
+		}
+
+		void addFilledCircle( circle c )
+		{
+					
 		}
 
 		void fillBetweenPoints(float a, float b, int32 y)
@@ -1161,3 +1194,5 @@ class ContextManager
 		Context* _currentContext;
 		std::vector<Context*> _contextContainer;
 };
+
+#endif

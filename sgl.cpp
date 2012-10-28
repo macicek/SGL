@@ -136,42 +136,47 @@ void sglEnd(void)
 		return;
 	}
 
-	switch ( cc->getDrawingMode() )
+	switch ( cc->getAreaMode() )
 	{
-		case SGL_POINTS:
-			cc->rasterizePoints();
-			break;
-
-		case SGL_LINES:
-			cc->rasterizeLines();
-			break;
-
-		case SGL_LINE_STRIP:
-			cc->rasterizeLineStrip();
-			break;
-
-		case SGL_LINE_LOOP:
-			cc->rasterizeLineLoop();
-			break;	
-
-		case SGL_POLYGON:
-			// TODO: Polygon rasterization and fill
-			switch ( cc->getAreaMode() )
+		// SGL_LINE
+		case SGL_LINE:
+		{
+			switch ( cc->getDrawingMode() )
 			{
-				case SGL_LINE:
-					// TODO: Here implement line rasterization, should be the same as line strip
+				case SGL_POINTS:
+					cc->rasterizePoints();
+					break;
+
+				case SGL_LINES:
+					cc->rasterizeLines();
+					break;
+
+				case SGL_LINE_STRIP:
+					cc->rasterizeLineStrip();
+					break;
+
+				case SGL_LINE_LOOP:
+				case SGL_POLYGON:
 					cc->rasterizeLineLoop();
 					break;
-
-				case SGL_FILL:
-					// TODO: Here implement filling
-					cc->addFilledPolygon();
-					break;
 			}
-			
 			break;
-	}
+		}
+		// END SGL_LINE
 
+		// SGL_FILL
+		case SGL_FILL:
+		{
+			switch ( cc->getDrawingMode() )
+			{				
+				case SGL_POLYGON:	
+					cc->addFilledPolygon();
+					break;	
+			}
+			break;
+		}
+		// END SGL_FILL
+	}
 	cc->clearVertexBuffer();
 	cc->setInCycle(false);
 }
@@ -187,17 +192,47 @@ void sglVertex2f(float x, float y)
 
 void sglCircle(float x, float y, float z, float radius)
 {
-	cm.currentContext()->addCircle( circle(vertex(x, y, z), radius) );
+	Context* cc = cm.currentContext();
+	switch ( cc->getAreaMode() )
+	{
+		case SGL_LINE:
+			cc->addCircle( circle(vertex(x, y, z), radius) );
+			break;
+
+		case SGL_FILL:
+			cc->addCircle( circle(vertex(x, y, z), radius), true);
+			break;
+	}	
 }
 
 void sglEllipse(float x, float y, float z, float a, float b)
 {
-	cm.currentContext()->addEllipse( ellipse(vertex(x, y, z), a, b) );
+	Context* cc = cm.currentContext();
+	switch ( cc->getAreaMode() )
+	{
+		case SGL_LINE:
+			cc->addEllipse( ellipse(vertex(x, y, z), a, b) );
+			break;
+
+		case SGL_FILL:
+			cc->addEllipse( ellipse(vertex(x, y, z), a, b), true);
+			break;
+	}	
 }
 
 void sglArc(float x, float y, float z, float radius, float from, float to)
 {
-	cm.currentContext()->addArc( arc(vertex(x, y, z), radius, from, to) );
+	Context* cc = cm.currentContext();
+	switch ( cc->getAreaMode() )
+	{
+		case SGL_LINE:
+			cc->addArc( arc(vertex(x, y, z), radius, from, to) );
+			break;
+
+		case SGL_FILL:
+			cc->addArc( arc(vertex(x, y, z), radius, from, to), true );
+			break;
+	}		
 }
 
 //---------------------------------------------------------------------------
