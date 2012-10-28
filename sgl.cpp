@@ -160,6 +160,7 @@ void sglEnd(void)
 			{
 				case SGL_LINE:
 					// TODO: Here implement line rasterization, should be the same as line strip
+					cc->rasterizeLineLoop();
 					break;
 
 				case SGL_FILL:
@@ -375,7 +376,10 @@ void sglColor3f( float r, float g, float b )
 	cm.currentContext()->setCurrentColor( r, g, b );
 }
 
-void sglAreaMode(sglEAreaMode mode) {}
+void sglAreaMode(sglEAreaMode mode)
+{
+	cm.currentContext()->setAreaMode( mode );
+}
 
 
 void sglPointSize( float size )

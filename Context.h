@@ -1,32 +1,17 @@
 #include "sgl.h"
 
+#include <algorithm>
 #include <vector>
 #include <list>
-#include <algorithm>
+#include <map>
+
 #include <cstdlib>
 #include <cmath>
+#include <math.h>
 #include <iostream>
+#include <functional>
 
-// Type definitions
-typedef		unsigned char	uint8;
-typedef		unsigned short	uint16;
-typedef		unsigned int	uint32;
-
-typedef		char			int8;
-typedef		short			int16;
-typedef		int				int32;
-
-
-// Constants
-const float PI_F				= 3.14159265358979f;
-
-const uint8	ELLIPSE_SEGMENTS_UI	= 40;
-const float ELLIPSE_SEGMENTS_F	= 40.0f;
-
-const uint8 ARC_SEGMENTS_UI		= 40;
-const float ARC_SEGMENTS_F		= 40.0f;
-
-const float Z_BUFFER_INFINITY	= 2.0f;
+#include "Mathematics.h"
 
 enum Matrices
 {
@@ -299,8 +284,18 @@ matrix4x4 operator* (const float* a, const matrix4x4& b)
 struct vertex
 {
 	public:
+		vertex(){ };
 		vertex(float x, float y) : _x(x), _y(y), _z(0.0f), _w(1.0f) {}
 		vertex(float x, float y, float z) : _x(x), _y(y), _z(z),  _w(1.0f) {}
+		vertex& operator= (const vertex& a)
+		{
+			_x = a.x();
+			_y = a.y();
+			_z = a.z();
+			_w = a.w();
+
+			return *this;
+		}
 		
 		float x() const { return _x; }
 		float y() const { return _y; }
@@ -380,46 +375,86 @@ struct ellipse
 		float _a, _b;
 };
 
-class PolyLine {
-public:    
-    float x;
-    float deltaX;
-    int startY;
-    int endY;
-    float y;
-    int deltaY;
-    float z;
-    float deltaZ;
-   
-public:    
-    PolyLine(vertex a, vertex b){
-        if(b.y() < a.y()){                      //zajisti ze primky jsou top-down
-            vertex c = a;
-            a = b;
-            b = c;
-        }
-        startY = (int)(a.y()+0.5);
-        endY = (int)(b.y()+0.5);
-        deltaY = endY - startY;
-        deltaX = (b.x() - a.x())/deltaY;
-        deltaZ = (b.z() - a.z())/deltaY;
-        x = a.x();
-        y = startY-1;
-        z = a.z();
-    }
-    
-    vertex getPoint() {
-        return vertex((int)(x+0.5), (int)y, (int)(z+0.5));
-    }
-    
-    void nextStep(){
-        y++;
-        if(y != startY){
-            x += deltaX;
-            z += deltaZ;
-        }
-    } 
+class edge 
+{
+	public:  
+		edge(vertex a, vertex b)
+		{
+			if(b.y() < a.y())
+				std::swap( a, b );
 
+			_dy		= b.y() - a.y();
+
+			_dx		= ( b.x() - a.x() ) / _dy;
+			_dz		= ( b.z() - a.z() ) / _dy;
+
+			_x		= a.x();
+			_y		= a.y();
+			_z		= a.z();
+
+			_start_y = a.y();
+			_end_y	= b.y();
+		}
+    
+		vertex toVertex()
+		{
+			return vertex(_x, _y, _z);
+		}
+    
+		void nextStep()
+		{
+			_y += 1.0f;
+			if (_y != _start_y)
+			{
+				_x += _dx;
+				_z += _dz;
+			}
+		} 
+
+		bool operator== (const edge& line)
+		{
+			return	_x == line.x() &&
+					_y == line.y() &&
+					_z == line.z();
+		}
+
+		float x() const { return _x; }
+		float y() const { return _y; }
+		float z() const { return _z; }
+
+		float start() const { return _start_y; }
+		float end() const { return _end_y; }
+
+		struct startFunctor : public std::binary_function<edge, edge, bool>
+		{
+			bool operator()( edge a, edge b)
+			{
+				return a.start() < b.start();
+			}
+		};
+
+		struct endFunctor : public std::binary_function<edge, edge, bool>
+		{
+			bool operator()( edge a, edge b)
+			{
+				return	a.end() < b.end();
+			}
+		};
+
+		struct xFunctor : public std::binary_function<edge, edge, bool>
+		{
+			bool operator()( edge a, edge b)
+			{
+				return	a.x() < b.x();
+			}
+		};
+
+	private:  
+		float	_x, _y, _z;
+		float	_dx, _dy, _dz;
+
+		float	_start_y,
+				_end_y;
 };
 
 struct arc
@@ -689,27 +724,6 @@ class Context
 			 } 		
 		}
 
-    class BeginingsComparator {
-    public:
-        bool operator () (const PolyLine &o1, const PolyLine &o2) {
-            return o1.startY < o2.startY;
-        }
-    };
-
-    class EndsComparator {
-    public:
-        int operator () (const PolyLine &o1, const PolyLine &o2) {
-            return o1.endY < o2.endY;
-        }
-    };
-
-    class ShuffleComparator {
-    public:
-        int operator () (const PolyLine &o1, const PolyLine &o2) {
-            return o1.x < o2.x;
-        }
-    };
-  
 		// TODO: Implement the algorithm itself here
 		/// Draws a filled polygon
 		/**
@@ -718,85 +732,83 @@ class Context
 			@parameters
 		*/
 		void			addFilledPolygon( void )
-		{
-        std::list<PolyLine &> allLines;
-        std::list<PolyLine &> linesBeginings;
-        std::list<PolyLine &> linesEnds;
-        std::list<PolyLine &> activeLines;
-        
-        
-        allLines.push_back(PolyLine(_vertexBuffer.back(), _vertexBuffer.front()));                
-        for (unsigned i = 1; i < _vertexBuffer.size(); i++) 
-            allLines.push_back(PolyLine(_vertexBuffer[i - 1], _vertexBuffer[i]));
+		{		       			    	
+			for (std::vector<vertex>::iterator it = _vertexBuffer.begin(); it != _vertexBuffer.end(); ) 
+			{
+				vertex tmp = *it;
 
-        linesBeginings = allLines;
-        linesEnds = allLines;
+				if (++it == _vertexBuffer.end())
+					break;
 
-        std::sort(linesBeginings.begin(), linesBeginings.end(), BeginingsComparator());
-        std::sort(linesEnds.begin(), linesEnds.end(), EndsComparator());
+				edge e(tmp, *it);
+				_nonActiveEdges.push_back(e);
+			}
 
-        //zacatek cyklu vykreslovani - iterujeme podle RADKU
-        //
+			edge e(_vertexBuffer.back(), _vertexBuffer.front());
+			_nonActiveEdges.push_back(e);
+			std::sort( _nonActiveEdges.begin(), _nonActiveEdges.end(), edge::startFunctor() );
+			
+			int32 minY = sglmath::round(_nonActiveEdges.front().start());
+			int32 maxY = sglmath::round(_nonActiveEdges.back().end());
 
-        int minY = linesBeginings.front().startY;
-        int maxY = linesEnds.back().endY;
+			std::vector<edge>::iterator it;
+			for (int32 y = minY; y < maxY; ++y)
+			{								
+				// edge activation
+				it = _nonActiveEdges.begin();
+				while (!_nonActiveEdges.empty() && sglmath::round(it->start()) == y)
+				{
+					_activeEdges.push_back(*it);
+					_nonActiveEdges.erase(it);
+					it = _nonActiveEdges.begin();
+				}
 
-        std::list<PolyLine &>::iterator it;
-        for (int y = minY; y < maxY; y++) {
-            //zaktivovani novych hran v aktualnim radku
-            while (!linesBeginings.empty() && linesBeginings.front().startY == y) {
-                activeLines.push_back(linesBeginings.front());
-                linesBeginings.pop_front();
-            }
-            //deaktivovani hran koncicich na aktualnim radku
-            while (!linesEnds.empty() && linesEnds.front().endY == y) {
-                for (it = activeLines.begin(); it != activeLines.end(); ++it) {
-                    if (&(*it) == &linesEnds.front())
-						activeLines.erase(it);
-                }
-                linesEnds.pop_front();
-            }
+				std::sort( _activeEdges.begin(), _activeEdges.end(), edge::endFunctor() );
 
-            for (it = activeLines.begin(); it != activeLines.end(); ++it) {
-                (*it).nextStep();
-            }
+				// edge deactivation
+				it = _activeEdges.begin();
+				while (!_activeEdges.empty() && sglmath::round(it->end()) == y)
+				{
+					_activeEdges.erase(it);
+					it = _activeEdges.begin();
+				}
 
-            //serazeni linek od leva do prava
-            sortActiveLines(activeLines);
+				if (_activeEdges.empty())
+					continue;
+				
+				for (it = _activeEdges.begin(); it != _activeEdges.end(); ++it)
+				{
+					edge& e = *it;
+					e.nextStep();
+				}				
+		
+				std::sort( _activeEdges.begin(), _activeEdges.end(), edge::xFunctor() );
+				for (it = _activeEdges.begin(); it != _activeEdges.end(); ++it)
+				{				
+					vertex a = it->toVertex();
 
+					++it;
+					if (it == _activeEdges.end())
+						break;
 
-            //plneni radku mezi jednotlivymi linkami
-            for (it = activeLines.begin(); it != activeLines.end(); ++it) {
-                vertex t = (*it).getPoint();
-                ++it;
-                fillBetweenPoints(t, (*it).getPoint());
-            }
-        }
+					vertex b = it->toVertex();
+					fillBetweenPoints(a.x(), b.x(), y);
+				}
+			}
+			_activeEdges.clear();
+			_nonActiveEdges.clear();
 		}
 
-    void sortActiveLines(std::list<PolyLine &> &lines) {
+		void fillBetweenPoints(float a, float b, int32 y)
+		{		
+			int32 from = static_cast<int32>( a );
+			int32 to = static_cast<int32>( b );
 
-        //shufflesort!!!! TODO
+			if (from > to)
+				std::swap(from, to);
 
-        std::sort(lines.begin(), lines.end(), ShuffleComparator());
-    }
-
-    void fillBetweenPoints(vertex &left, vertex &right) {
-        
-        std::cout << "plnim radek " << left.y() << " na pozicich [" << left.x() << " - " << right.x() << "]\n";
-        
-    }
-
-		// TODO: Implement edgeBuffer sorting here
-		/// Sorts edge buffer
-		/**
-			Detailed descriptioin
-
-			@parameters
-		*/
-		void			sortEdgeBuffer( void )
-		{
-
+			for (int32 x = from; x <= to; ++x)
+				setPixel(x, y);
 		}
 
 
@@ -972,7 +984,7 @@ class Context
 			@param y[in] Y coordinate.
 			@param z[in] Depth
 		*/
-		void			setPixel3D(uint32 x, uint32 y, uint32 z)
+		void			setPixel3D(uint32 x, uint32 y, float z)
 		{
 			uint32 pos = y * _w + x;
 			if (z < _zbuffer[pos])
@@ -1116,6 +1128,9 @@ class Context
 		bool					_inCycle;
 		bool					_depthTest;
 		bool					_updateMVPMneeded;
+
+		std::vector<edge>		_nonActiveEdges;
+		std::vector<edge>		_activeEdges;
 
 };
 
