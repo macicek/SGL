@@ -1,6 +1,8 @@
 #ifndef DEFINES_H
 #define DEFINES_H
 
+#include <limits>
+
 // Type definitions
 typedef		unsigned char	uint8;
 typedef		unsigned short	uint16;
@@ -20,6 +22,6 @@ const float ELLIPSE_SEGMENTS_F	= 40.0f;
 const uint8 ARC_SEGMENTS_UI		= 40;
 const float ARC_SEGMENTS_F		= 40.0f;
 
-const float Z_BUFFER_INFINITY	= 2.0f;
+const float Z_BUFFER_INFINITY	= std::numeric_limits<float>::max();
 
 #endif

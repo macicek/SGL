@@ -181,9 +181,15 @@ void sglEnd(void)
 	cc->setInCycle(false);
 }
 
-void sglVertex4f(float x, float y, float z, float w) {}
+void sglVertex4f(float x, float y, float z, float w)
+{
+	cm.currentContext()->addVertex( vertex(x, y, z, w) );
+}
 
-void sglVertex3f(float x, float y, float z) {}
+void sglVertex3f(float x, float y, float z)
+{
+	cm.currentContext()->addVertex( vertex(x, y, z) );
+}
 
 void sglVertex2f(float x, float y)
 {
@@ -247,34 +253,43 @@ void sglMatrixMode( sglEMatrixMode mode )
 void sglPushMatrix( void )
 {
 	Context* cc = cm.currentContext();
+	std::vector<matrix4x4>* stack = cc->getMatrixStack();
 
-	if ( cc->getMatrixStack()->max_size() == cc->getMatrixStack()->size() )
+	if ( stack->max_size() == stack->size() )
 	{
 		setErrCode( SGL_STACK_OVERFLOW );
 		return;
 	} 
-	
-	cc->getMatrixStack()->push_back( cc->getCurrentMatrix() );
+
+	switch ( cc->getMatrixMode() )
+	{
+		case SGL_PROJECTION:
+			stack->push_back( cc->getMatrix( M_PROJECTION ) );			
+			break;
+		case SGL_MODELVIEW:
+			stack->push_back( cc->getMatrix( M_MODELVIEW ) );
+			break;
+	}
 }
 
 void sglPopMatrix( void )
 {
 	Context* cc = cm.currentContext();
+	std::vector<matrix4x4>* stack = cc->getMatrixStack();
 
-	if ( cc->getMatrixStack()->size() <= 0 )
+	if ( stack->size() <= 0 )
 	{
 		setErrCode( SGL_STACK_UNDERFLOW );
 		return;
 	}
 	
-	cc->setCurrentMatrix( cc->getMatrixStack()->back() );
 	switch ( cc->getMatrixMode() )
 	{
 		case SGL_PROJECTION:
-			cc->setMatrix( M_PROJECTION );
+			cc->setMatrix( M_PROJECTION, stack->back() );
 			break;
 		case SGL_MODELVIEW:
-			cc->setMatrix( M_MODELVIEW );
+			cc->setMatrix( M_MODELVIEW, stack->back() );
 			break;
 	}
 	cc->getMatrixStack()->pop_back();
@@ -287,35 +302,35 @@ void sglLoadIdentity( void )
 	
 	// identity
 	matrix4x4 im;
-	cc->setCurrentMatrix( im.identity() );
 
 	switch ( cc->getMatrixMode() )
 	{
 		case SGL_PROJECTION:
-			cc->setMatrix( M_PROJECTION );
+			cc->setMatrix( M_PROJECTION, im.identity() );
 			break;
 		case SGL_MODELVIEW:
-			cc->setMatrix( M_MODELVIEW );
+			cc->setMatrix( M_MODELVIEW, im.identity() );
 			break;
 	}
+	cc->MVPMupdate();
 }
 
-void sglLoadMatrix(const float* matrix) {}
+void sglLoadMatrix(const float* matrix)
+{
+}
 
 void sglMultMatrix(const float* matrix)
 {
 	Context* cc = cm.currentContext();
 
-	cc->setCurrentMatrix( cc->getCurrentMatrix() * matrix );
-
 	switch ( cc->getMatrixMode() )
 	{
 		case SGL_MODELVIEW:
-			cc->setMatrix( M_MODELVIEW );
+			cc->setMatrix( M_MODELVIEW, cc->getMatrix(M_MODELVIEW) * matrix );
 			break;
 
 		case SGL_PROJECTION:
-			cc->setMatrix( M_PROJECTION );
+			cc->setMatrix( M_PROJECTION, cc->getMatrix(M_PROJECTION) * matrix );
 			break;
 	}
 	cc->MVPMupdate();
@@ -339,7 +354,6 @@ void sglScale(float scalex, float scaley, float scalez)
 void sglRotate2D(float angle, float centerx, float centery)
 {
 	matrix4x4 matrix;
-
 	sglMultMatrix( matrix.translate(centerx, centery, 0.0f).ptr() );
 	sglMultMatrix( matrix.rotate(angle).ptr() );
 	sglMultMatrix( matrix.translate(-centerx, -centery, 0.0f).ptr() );
@@ -347,16 +361,9 @@ void sglRotate2D(float angle, float centerx, float centery)
 
 void sglRotateY(float angle)
 {
-	matrix4x4 rotation_matrix;
-
-	rotation_matrix[0]	= cos(angle);
-	rotation_matrix[2]	= sin(angle);
-	rotation_matrix[5]	= 1.0f;
-	rotation_matrix[9]	= -sin(angle);
-	rotation_matrix[11] = cos(angle);
-	rotation_matrix[15] = 1.0f;
-
-	sglMultMatrix( rotation_matrix.ptr() );
+	matrix4x4 m;
+	sglMultMatrix( m.rotateY(angle).ptr() );
+	//sglMultMatrix( m.e_rotate( angle, 0.0f, 1.0f, 0.0f ).ptr() );
 }
 
 // OpenGL documetation: http://msdn.microsoft.com/en-us/library/windows/desktop/dd373965%28v=vs.85%29.aspx
@@ -381,12 +388,17 @@ void sglFrustum(float left, float right, float bottom, float top, float near, fl
 {
 	matrix4x4 m;
 
+	float A = (right + left) / (right-left);
+	float B = (top+bottom) / (top-bottom);
+	float C = -1 * ( (far+near) / (far-near) );
+	float D = -1 * ( (2.0f*far*near) / (far-near) );
+
 	m[0] = ( 2 * near ) / ( right - left );
-	m[2] = ( right + left ) / ( right - left );
+	m[2] = A;
 	m[5] = ( 2 * near ) / ( top - bottom );
-	m[6] = ( top + bottom ) / ( top - bottom );
-	m[10] = -(far + near) / ( far - near );
-	m[11] = -2 * far * near / ( far - near );
+	m[6] = B;
+	m[10] = C;
+	m[11] = D;
 	m[14] = -1.0f;
 
 	sglMultMatrix( m.ptr() );
@@ -426,17 +438,17 @@ void sglEnable( sglEEnableFlags cap )
 {
 	Context* cc = cm.currentContext();
 
-	switch ( cap )
-	{
-		case SGL_DEPTH_TEST:
-			cm.currentContext()->depthTest( true );
-			break;
-	}
-	
 	if (cc->isInCycle())
 	{
 		setErrCode( SGL_INVALID_OPERATION );
 		return;
+	}
+
+	switch ( cap )
+	{
+		case SGL_DEPTH_TEST:
+			cm.currentContext()->enableDepth( true );
+			break;
 	}
 }
 
@@ -445,7 +457,7 @@ void sglDisable( sglEEnableFlags cap )
 	switch ( cap )
 	{
 		case SGL_DEPTH_TEST:
-			cm.currentContext()->depthTest( false );
+			cm.currentContext()->enableDepth( false );
 			break;
 	}
 }

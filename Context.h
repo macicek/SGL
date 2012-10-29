@@ -1,6 +1,8 @@
 #ifndef CONTEXT_H
 #define CONTEXT_H
 
+#define _SGL_EXPERIMENTAL
+
 #include <algorithm>
 #include <vector>
 #include <cstdlib>
@@ -221,6 +223,34 @@ struct matrix4x4
 			return *this;
 		}
 
+		matrix4x4& rotateY( float angle )
+		{
+			float s = sin(angle);
+			float c = cos(angle);
+
+			_container[0]	= c;
+			_container[1]	= 0.0f;
+			_container[2]	= s;
+			_container[3]	= 0.0f;
+
+			_container[4]	= 0.0f;
+			_container[5]	= 1.0f;
+			_container[6]	= 0.0f;
+			_container[7]	= 0.0f;
+
+			_container[8]	= -s;
+			_container[9]	= 0.0f;
+			_container[10]	= c;
+			_container[11]	= 0.0f;
+
+			_container[12]	= 0.0f;
+			_container[13]	= 0.0f;
+			_container[14]	= 0.0f;
+			_container[15]	= 1.0f;
+
+			return *this;
+		}
+
 		matrix4x4& scale( float scale_x, float scale_y, float scale_z )
 		{
 			_container[0]	= scale_x;
@@ -245,6 +275,36 @@ struct matrix4x4
 
 			return *this;
 		}
+
+#ifdef _SGL_EXPERIMENTAL		
+		matrix4x4& e_rotate( float angle, float x = 0.0f, float y = 0.0f, float z = 1.0f )
+		{
+			float	s = sin(angle);
+			float	c = cos(angle);
+
+			_container[0]	= powf(x, 2.0f) * (1 - c) + c;
+			_container[1]	= x*y * (1.0f-c) - z*s;
+			_container[2]	= x*z * (1.0f-c) + y*s;
+			_container[3]	= 0.0f;
+
+			_container[4]	= y*x * (1.0f-c) + z*s;
+			_container[5]	= powf(y, 2.0f) * (1.0f-c) + c;
+			_container[6]	= y*z * (1.0f-c) - x*s;
+			_container[7]	= 0.0f;
+
+			_container[8]	= x*z * (1.0f-c) - y*s;
+			_container[9]	= y*z * (1.0f-c) + x*s;
+			_container[10]	= powf(z, 2.0f) * (1.0f-c) + c;
+			_container[11]	= 0.0f;
+
+			_container[12]	= 0.0f;
+			_container[13]	= 0.0f;
+			_container[14]	= 0.0f;
+			_container[15]	= 1.0f;
+
+			return *this;
+		}
+#endif
 
 		const float* ptr() { return _container; }
 
@@ -284,6 +344,8 @@ struct vertex
 		vertex(){ };
 		vertex(float x, float y) : _x(x), _y(y), _z(0.0f), _w(1.0f) {}
 		vertex(float x, float y, float z) : _x(x), _y(y), _z(z),  _w(1.0f) {}
+		vertex(float x, float y, float z, float w) : _x(x), _y(y), _z(z),  _w(w) {}
+
 		vertex& operator= (const vertex& a)
 		{
 			_x = a.x();
@@ -321,6 +383,20 @@ struct vertex
 			_y = __x * m[4] +	__y * m[5] +	__z * m[6] +	__w * m[7];
 			_z = __x * m[8] +	__y * m[9] +	__z * m[10] +	__w * m[11];
 			_w = __x * m[12] +	__y * m[13] +	__z * m[14] +	__w * m[15];
+
+			return *this;		
+		}
+
+		vertex& normalize()
+		{
+			if (_w == 1.0f)
+				return *this;
+
+			_x /= _w;
+			_y /= _w;
+			_z /= _w;
+
+			_w = 1.0f;
 
 			return *this;
 		}
@@ -577,7 +653,8 @@ class Context
 		void			addVertex( vertex v )
 		{ 
 			MVPTransform( v );
-			normalize( v );
+			v.normalize();
+			clipToViewport( v );
 
 			_vertexBuffer.push_back( v );
 		}
@@ -684,7 +761,8 @@ class Context
 			// center normalization
 			vertex center = c.center();
 			MVPTransform(center);
-			normalize(center);
+			center.normalize();
+			clipToViewport(center);
 
 			// TODO: add documentation
 			float det = ( (_viewport_w / 2) * _matrix[M_MVP][0] * 
@@ -827,11 +905,6 @@ class Context
 			_nonActiveEdges.clear();
 		}
 
-		void addFilledCircle( circle c )
-		{
-					
-		}
-
 		void fillBetweenPoints(float a, float b, int32 y)
 		{		
 			int32 from = static_cast<int32>( a );
@@ -857,7 +930,7 @@ class Context
 			if (_updateMVPMneeded)
 				callMVPMupdate();
 
-			v *= _matrix[M_MVP];
+			v *= _matrix[M_MVP];			
 		}
 
 		void			MVPMupdate()
@@ -865,7 +938,7 @@ class Context
 			_updateMVPMneeded = true;
 		}
 
-		void			normalize( vertex& v )
+		void			clipToViewport( vertex& v )
 		{
 			v.setX( (v.x() + 1.0f) * static_cast<float>(_viewport_w) / 2.0f + _viewport_min_x );
 			v.setY( (v.y() + 1.0f) * static_cast<float>(_viewport_h) / 2.0f + _viewport_min_y );
@@ -1068,7 +1141,7 @@ class Context
 		uint32		getViewportHeight()
 		{ return _viewport_h; }
 
-		void			depthTest(bool value)
+		void			enableDepth(bool value)
 		{ _depthTest = value; }
 
 		matrix4x4		getCurrentMatrix() const
@@ -1097,8 +1170,8 @@ class Context
 			return _matrixStack;
 		}
 
-		void setMatrix( Matrices m )
-		{ _matrix[m] = _currentMatrix; }
+		void setMatrix( Matrices type, matrix4x4 m )
+		{ _matrix[type] = m; }
 
 		matrix4x4 getMatrix( Matrices m ) const
 		{ return _matrix[m]; }
