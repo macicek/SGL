@@ -184,7 +184,7 @@ struct matrix4x4
 
 			_container[8]	= 0.0f;
 			_container[9]	= 0.0f;
-			_container[10]	= 0.0f;
+			_container[10]	= 1.0f;
 			_container[11]	= z;
 
 			_container[12]	= 0.0f;
@@ -212,7 +212,7 @@ struct matrix4x4
 
 			_container[8]	= 0.0f;
 			_container[9]	= 0.0f;
-			_container[10]	= 0.0f;
+			_container[10]	= 1.0f;
 			_container[11]	= 0.0f;
 
 			_container[12]	= 0.0f;
@@ -225,8 +225,8 @@ struct matrix4x4
 
 		matrix4x4& rotateY( float angle )
 		{
-			float s = sin(angle);
-			float c = cos(angle);
+			float s = sin(-angle);
+			float c = cos(-angle);
 
 			_container[0]	= c;
 			_container[1]	= 0.0f;
@@ -898,14 +898,14 @@ class Context
 						break;
 
 					vertex b = it->toVertex();
-					fillBetweenPoints(a.x(), b.x(), y);
+					fillBetweenPoints(a.x(), b.x(), y, a.z(), b.z());
 				}
 			}
 			_activeEdges.clear();
 			_nonActiveEdges.clear();
 		}
 
-		void fillBetweenPoints(float a, float b, int32 y)
+		void fillBetweenPoints(float a, float b, int32 y, float d_start = 0.0f, float d_end = 0.0f)
 		{		
 			int32 from = static_cast<int32>( a );
 			int32 to = static_cast<int32>( b );
@@ -913,8 +913,21 @@ class Context
 			if (from > to)
 				std::swap(from, to);
 
-			for (int32 x = from; x <= to; ++x)
-				setPixel(x, y);
+			float step = (d_end - d_start) / static_cast<float>(from - to);
+
+			if ( _depthTest )
+			{
+				for (int32 x = from; x <= to; ++x)
+				{
+					setPixel3D(x, y, d_start);
+					d_start += step;
+				}
+			}
+			else
+			{			
+				for (int32 x = from; x <= to; ++x)
+					setPixel(x, y);
+			}
 		}
 
 
