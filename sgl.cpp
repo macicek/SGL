@@ -102,10 +102,19 @@ float *sglGetColorBufferPointer( void )
 //---------------------------------------------------------------------------
 
 void sglClearColor (float r, float g, float b, float alpha)
-{
+{	
+	cm.currentContext()->setClearColor(r, g, b);
 }
 
-void sglClear(unsigned what) {}
+void sglClear(unsigned what)
+{	
+	if ( what & SGL_COLOR_BUFFER_BIT )
+		cm.currentContext()->clearColor();
+
+	if ( what & SGL_DEPTH_BUFFER_BIT)
+		cm.currentContext()->clearZBuffer();
+	
+}
 
 void sglBegin( sglEElementType mode )
 {
@@ -117,7 +126,8 @@ void sglBegin( sglEElementType mode )
 
 	Context* cc = cm.currentContext();
 
-	if(cc->isInCycle()){
+	if( cc->isInCycle() )
+	{
 		setErrCode( SGL_INVALID_OPERATION );
 		return;
 	}
@@ -355,15 +365,14 @@ void sglRotate2D(float angle, float centerx, float centery)
 {
 	matrix4x4 matrix;
 	sglMultMatrix( matrix.translate(centerx, centery, 0.0f).ptr() );
-	sglMultMatrix( matrix.rotate(angle).ptr() );
+	sglMultMatrix( matrix.rotateZ(angle).ptr() );
 	sglMultMatrix( matrix.translate(-centerx, -centery, 0.0f).ptr() );
 }
 
 void sglRotateY(float angle)
 {
 	matrix4x4 m;
-	sglMultMatrix( m.rotateY(angle).ptr() );
-	//sglMultMatrix( m.e_rotate( angle, 0.0f, 1.0f, 0.0f ).ptr() );
+	sglMultMatrix( m.rotateY(angle).ptr() );	
 }
 
 // OpenGL documetation: http://msdn.microsoft.com/en-us/library/windows/desktop/dd373965%28v=vs.85%29.aspx
@@ -386,20 +395,21 @@ void sglOrtho(float left, float right, float bottom, float top, float near, floa
 // OpenGL documentation: http://msdn.microsoft.com/en-us/library/windows/desktop/dd373537%28v=vs.85%29.aspx
 void sglFrustum(float left, float right, float bottom, float top, float near, float far)
 {
+	if ( near <= 0.0f || far <= 0.0f )
+	{
+		setErrCode( SGL_INVALID_VALUE );
+		return;
+	}
+
 	matrix4x4 m;
 
-	float A = (right + left) / (right-left);
-	float B = (top+bottom) / (top-bottom);
-	float C = -1 * ( (far+near) / (far-near) );
-	float D = -1 * ( (2.0f*far*near) / (far-near) );
-
-	m[0] = ( 2 * near ) / ( right - left );
-	m[2] = A;
-	m[5] = ( 2 * near ) / ( top - bottom );
-	m[6] = B;
-	m[10] = C;
-	m[11] = D;
-	m[14] = -1.0f;
+	m[0]	= (2 * near) / (right - left);
+	m[2]	= (right + left) / (right - left);
+	m[5]	= (2 * near) / (top - bottom);
+	m[6]	= (top + bottom) / (top - bottom);
+	m[10]	= -1.0f * ( (far + near) / (far - near) );
+	m[11]	= -1.0f * ( (2.0f * far * near) / (far - near) );
+	m[14]	= -1.0f;
 
 	sglMultMatrix( m.ptr() );
 }
@@ -408,8 +418,7 @@ void sglViewport(int x, int y, int width, int height)
 {
 	Context* cc = cm.currentContext();
 
-	cc->setViewport( width, height );
-	cc->setViewportMin( x, y );
+	cc->setViewport( viewport(width, height, x, y) );
 	
 }
 

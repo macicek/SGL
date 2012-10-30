@@ -12,11 +12,14 @@
 #include "sgl.h"
 #include "Mathematics.h"
 
-enum Matrices
+enum contextMatrices
 {
 	M_MVP,
 	M_MODELVIEW,
-	M_PROJECTION
+	M_PROJECTION,
+	M_VIEWPORT,
+
+	M_SIZE
 };
 
 struct color_rgba
@@ -34,6 +37,30 @@ struct color_rgba
 
 	private:
 		float _r, _g, _b;
+};
+
+struct viewport
+{
+	public:
+		viewport(){ };
+		viewport(uint32 width, uint32 height, uint32 offsetX, uint32 offsetY) : 
+			_width(width),
+			_height(height),
+			_offsetX(offsetX),
+			_offsetY(offsetY)
+		{};
+
+		uint32 width() const { return _width; }
+		uint32 height() const { return _height; }
+		uint32 offsetX() const { return _offsetX; }
+		uint32 offsetY() const { return _offsetY; }
+	
+	private:
+		uint32	_width,
+				_height;
+		
+		uint32	_offsetX,
+				_offsetY;
 };
 
 struct matrix4x4
@@ -195,7 +222,7 @@ struct matrix4x4
 			return *this;
 		}
 
-		matrix4x4& rotate( float angle )
+		matrix4x4& rotateZ( float angle )
 		{
 			float s = sin(angle);
 			float c = cos(angle);
@@ -225,12 +252,12 @@ struct matrix4x4
 
 		matrix4x4& rotateY( float angle )
 		{
-			float s = sin(-angle);
-			float c = cos(-angle);
+			float s = sin(angle);
+			float c = cos(angle);
 
 			_container[0]	= c;
 			_container[1]	= 0.0f;
-			_container[2]	= s;
+			_container[2]	= -s;
 			_container[3]	= 0.0f;
 
 			_container[4]	= 0.0f;
@@ -238,7 +265,7 @@ struct matrix4x4
 			_container[6]	= 0.0f;
 			_container[7]	= 0.0f;
 
-			_container[8]	= -s;
+			_container[8]	= s;
 			_container[9]	= 0.0f;
 			_container[10]	= c;
 			_container[11]	= 0.0f;
@@ -275,9 +302,8 @@ struct matrix4x4
 
 			return *this;
 		}
-
-#ifdef _SGL_EXPERIMENTAL		
-		matrix4x4& e_rotate( float angle, float x = 0.0f, float y = 0.0f, float z = 1.0f )
+		
+		matrix4x4& rotate_around_vector( float angle, float x = 0.0f, float y = 0.0f, float z = 1.0f )
 		{
 			float	s = sin(angle);
 			float	c = cos(angle);
@@ -304,7 +330,31 @@ struct matrix4x4
 
 			return *this;
 		}
-#endif
+
+		matrix4x4& viewport( float width, float height, float offsetX, float offsetY )
+		{
+			_container[0]	= width / 2.0f;
+			_container[1]	= 0.0f;
+			_container[2]	= 0.0f;
+			_container[3]	= offsetX + width / 2.0f;
+
+			_container[4]	= 0.0f;
+			_container[5]	= height / 2.0f;
+			_container[6]	= 0.0f;
+			_container[7]	= offsetY + height / 2.0f;
+
+			_container[8]	= 0.0f;
+			_container[9]	= 0.0f;
+			_container[10]	= 1.0f;
+			_container[11]	= 0.0f;
+
+			_container[12]	= 0.0f;
+			_container[13]	= 0.0f;
+			_container[14]	= 0.0f;
+			_container[15]	= 1.0f;
+
+			return *this;		
+		}
 
 		const float* ptr() { return _container; }
 
@@ -387,9 +437,9 @@ struct vertex
 			return *this;		
 		}
 
-		vertex& normalize()
+		vertex& wNormalize()
 		{
-			if (_w == 1.0f)
+			if (_w == 1.0f /* no normalization */ || _w == 0.0f /* no depth */)
 				return *this;
 
 			_x /= _w;
@@ -397,6 +447,17 @@ struct vertex
 			_z /= _w;
 
 			_w = 1.0f;
+
+			return *this;
+		}
+
+		vertex& vectorNormalize()
+		{
+			float magnitute = sqrtf(powf(_x, 2.0f) + powf(_y, 2.0f) + powf(_z, 2.0f));
+
+			_x /= magnitute;
+			_y /= magnitute;
+			_z /= magnitute;
 
 			return *this;
 		}
@@ -652,9 +713,12 @@ class Context
 		*/
 		void			addVertex( vertex v )
 		{ 
-			MVPTransform( v );
-			v.normalize();
-			clipToViewport( v );
+			v *= _matrix[M_MODELVIEW];
+			v *= _matrix[M_PROJECTION];			
+
+			v.wNormalize();			
+
+			v *= _matrix[M_VIEWPORT];
 
 			_vertexBuffer.push_back( v );
 		}
@@ -760,15 +824,22 @@ class Context
 		{		
 			// center normalization
 			vertex center = c.center();
-			MVPTransform(center);
-			center.normalize();
-			clipToViewport(center);
+			center *= _matrix[M_MODELVIEW];
+			center *= _matrix[M_PROJECTION];
 
+			center.wNormalize();
+			
+			center *= _matrix[M_VIEWPORT];
+
+			float vp_width = static_cast<float>( _viewport.width() );
+			float vp_height = static_cast<float>( _viewport.height() );
 			// TODO: add documentation
-			float det = ( (_viewport_w / 2) * _matrix[M_MVP][0] * 
-						(_viewport_h / 2) * _matrix[M_MVP][5] ) -
-						( (_viewport_w / 2) * _matrix[M_MVP][1] *
-						(_viewport_h / 2) * _matrix[M_MVP][4] );
+
+			callMVPMupdate();
+			float det = ( (vp_width / 2) * _matrix[M_MVP][0] * 
+						(vp_height / 2) * _matrix[M_MVP][5] ) -
+						( (vp_width / 2) * _matrix[M_MVP][1] *
+						(vp_height / 2) * _matrix[M_MVP][4] );
 
 			int32 radius = static_cast<int32>(sqrt(det) * c.radius());
 
@@ -857,6 +928,12 @@ class Context
 			int32 minY = sglmath::round(_nonActiveEdges.front().start());
 			int32 maxY = sglmath::round(_nonActiveEdges.back().end());
 
+			if (maxY > _h)
+				maxY = _h;
+
+			if (minY < 0)
+				minY = 0;
+
 			std::vector<edge>::iterator it;
 			for (int32 y = minY; y < maxY; ++y)
 			{								
@@ -907,25 +984,25 @@ class Context
 
 		void fillBetweenPoints(float a, float b, int32 y, float d_start = 0.0f, float d_end = 0.0f)
 		{		
-			int32 from = static_cast<int32>( a );
-			int32 to = static_cast<int32>( b );
+			int32 from = std::max(0, static_cast<int32>( a ));
+			int32 to = std::min(static_cast<int32>(_w), static_cast<int32>( b ));
 
 			if (from > to)
 				std::swap(from, to);
 
-			float step = (d_end - d_start) / static_cast<float>(from - to);
+			float step = (d_end - d_start) / static_cast<float>(to - from);
 
 			if ( _depthTest )
 			{
-				for (int32 x = from; x <= to; ++x)
+				for (uint32 x = from; x <= to; ++x)
 				{
-					setPixel3D(x, y, d_start);
+					setPixel(x, y, d_start, true);
 					d_start += step;
 				}
 			}
 			else
 			{			
-				for (int32 x = from; x <= to; ++x)
+				for (uint32 x = from; x < to; ++x)
 					setPixel(x, y);
 			}
 		}
@@ -950,13 +1027,6 @@ class Context
 		{
 			_updateMVPMneeded = true;
 		}
-
-		void			clipToViewport( vertex& v )
-		{
-			v.setX( (v.x() + 1.0f) * static_cast<float>(_viewport_w) / 2.0f + _viewport_min_x );
-			v.setY( (v.y() + 1.0f) * static_cast<float>(_viewport_h) / 2.0f + _viewport_min_y );
-		}
-
 
 		/// Inserts points into memory
 		/**
@@ -1088,29 +1158,20 @@ class Context
 			@param x[in] X coordinate.
 			@param y[in] Y coordinate.
 		*/
-		void			setPixel(uint32 x, uint32 y)
+		void			setPixel(uint32 x, uint32 y, float z = 0.0f, bool depth = false)
 		{
-			setColorBuffer(x, y, _currentColor);
-		}
-
-		/// Sets a given point (pixel) in 3D space
-		/**
-			Sets a given point in 3D space. We only project in a 2D plane, therefore we check with the
-			z-buffer if the currently displayed pixel is nearer or further than the one we want to draw
-			and if that is so, we redraw the pixel.
-
-			@param x[in] X coordinate.
-			@param y[in] Y coordinate.
-			@param z[in] Depth
-		*/
-		void			setPixel3D(uint32 x, uint32 y, float z)
-		{
-			uint32 pos = y * _w + x;
-			if (z < _zbuffer[pos])
+			if (depth)
 			{
-				_zbuffer[pos] = z; // update z-buffer
-				setPixel(x, y);
+				uint32 pos = _w * y + x;
+					
+				if (z <= _zbuffer[pos])
+				{
+					_zbuffer[pos] = z;
+					setColorBuffer(x, y, _currentColor);
+				}
 			}
+			else
+				setColorBuffer(x, y, _currentColor);
 		}
 
 		/// Sets a color for a given pixel inside memory
@@ -1121,7 +1182,7 @@ class Context
 			@param y[in] Y coordinate.
 			@param color[in] A color.
 		*/
-		void			setColorBuffer(uint32 x, uint32 y, color_rgba color)
+		void			setColorBuffer( uint32 x, uint32 y, color_rgba color )
 		{
 			uint32 i = _w * y + x;
 			 // we may want to draw outside of viewport, so better check
@@ -1142,32 +1203,23 @@ class Context
 		sglEMatrixMode	getMatrixMode()
 		{ return _currentMatrixMode; }
 
-		void			setViewport(int width, int height)
+		void			setViewport( viewport vp )
 		{ 
-			_viewport_w = width;
-			_viewport_h = height;
+			_viewport = vp;
+
+			float width		= static_cast<float>( vp.width() );
+			float height	= static_cast<float>( vp.height() );
+			float offsetX	= static_cast<float>( vp.offsetX() );
+			float offsetY	= static_cast<float>( vp.offsetY() );
+			
+			_matrix[M_VIEWPORT] = matrix4x4().viewport( width, height, offsetX, offsetY );
 		}
 
-		uint32		getViewportWidth()
-		{ return _viewport_w; }
-
-		uint32		getViewportHeight()
-		{ return _viewport_h; }
+		viewport		getViewport() const
+		{ return _viewport; }
 
 		void			enableDepth(bool value)
 		{ _depthTest = value; }
-
-		matrix4x4		getCurrentMatrix() const
-		{ return _currentMatrix; }
-
-		const float*	getCurrentMatrixPointer()
-		{ return _currentMatrix.ptr(); }
-
-		void			setCurrentMatrix(matrix4x4 matrix)
-		{ 
-			_currentMatrix = matrix; 
-		}
-
 		bool isInCycle() const
 		{
 			return _inCycle;
@@ -1183,23 +1235,40 @@ class Context
 			return _matrixStack;
 		}
 
-		void setMatrix( Matrices type, matrix4x4 m )
+		void setMatrix( contextMatrices type, matrix4x4 m )
 		{ _matrix[type] = m; }
 
-		matrix4x4 getMatrix( Matrices m ) const
+		matrix4x4 getMatrix( contextMatrices m ) const
 		{ return _matrix[m]; }
-
-		void setViewportMin( uint32 min_x, uint32 min_y )
-		{
-			_viewport_min_x = min_x;
-			_viewport_min_y = min_y;
-		}
 
 		void setAreaMode( sglEAreaMode mode )
 		{ _currentAreaMode = mode; }
 
 		sglEAreaMode getAreaMode() const
 		{ return _currentAreaMode; }
+
+		void setClearColor(float r, float g, float b)
+		{
+			setClearColor(color_rgba(r, g, b));
+		}
+		void setClearColor(color_rgba color)
+		{
+			_clearColor = color;
+		}
+
+		void clearColor()
+		{
+			uint32 size = _w * _h;
+			for ( uint32 i = 0; i < size; ++i )
+				_colorBuffer[i] = _clearColor;
+		}
+
+		void clearZBuffer()
+		{
+			uint32 size = _w * _h;
+			for ( uint32 i = 0; i < size; ++i )
+				_zbuffer[i] = Z_BUFFER_INFINITY;
+		}
 		
 
 	protected:
@@ -1211,12 +1280,9 @@ class Context
 		}
 
 		void initZBuffer()
-		{
-			uint32 size = _w * _h;
+		{			
 			_zbuffer = new float[_w * _h];
-
-			for (uint32 i = 0; i < size; ++i)
-				_zbuffer[i] = Z_BUFFER_INFINITY;
+			clearZBuffer();
 		}
 
 	private:
@@ -1228,17 +1294,15 @@ class Context
 		float					_pointSize;
 
 		color_rgba				_currentColor;
+		color_rgba				_clearColor;
+
 		std::vector<vertex>		_vertexBuffer;
 		std::vector<matrix4x4>*	_matrixStack;
 		std::vector<uint32>		_edgeBuffer;
 		
-		uint32					_viewport_w;
-		uint32					_viewport_h;
-		uint32					_viewport_min_x;
-		uint32					_viewport_min_y;
+		viewport				_viewport;
 		
-		matrix4x4				_currentMatrix;
-		matrix4x4				_matrix[3];
+		matrix4x4				_matrix[M_SIZE];
 
 		sglEMatrixMode			_currentMatrixMode;
 		sglEAreaMode			_currentAreaMode;
