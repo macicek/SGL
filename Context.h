@@ -712,9 +712,11 @@ class Context
 			@param vertex[in] A vertex.
 		*/
 		void			addVertex( vertex v )
-		{ 
-			v *= _matrix[M_MODELVIEW];
-			v *= _matrix[M_PROJECTION];			
+		{ 			
+			if ( _updateMVPMneeded )
+				doMVPMupdate();
+
+			v *= _matrix[M_MVP];				
 
 			v.wNormalize();			
 
@@ -835,7 +837,7 @@ class Context
 			float vp_height = static_cast<float>( _viewport.height() );
 			// TODO: add documentation
 
-			callMVPMupdate();
+			doMVPMupdate();
 			float det = ( (vp_width / 2) * _matrix[M_MVP][0] * 
 						(vp_height / 2) * _matrix[M_MVP][5] ) -
 						( (vp_width / 2) * _matrix[M_MVP][1] *
@@ -1005,22 +1007,6 @@ class Context
 				for (uint32 x = from; x < to; ++x)
 					setPixel(x, y);
 			}
-		}
-
-
-		/// Model-View-Projection Transformation
-		/**
-			In case an MVP update is needed, a Model-View-Projection matrix is recalculated based on stored Modelview and
-			Projection matrices. Then it's applied on a give vertex 
-
-			@param vertex[in] A vertex.
-		*/
-		void			MVPTransform( vertex& v ) //  MVP : Model-View-Projection
-		{
-			if (_updateMVPMneeded)
-				callMVPMupdate();
-
-			v *= _matrix[M_MVP];			
 		}
 
 		void			MVPMupdate()
@@ -1272,7 +1258,7 @@ class Context
 		
 
 	protected:
-		void callMVPMupdate()
+		void doMVPMupdate()
 		{
 			_matrix[M_MVP] =  _matrix[M_PROJECTION] * _matrix[M_MODELVIEW];
 

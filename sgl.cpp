@@ -407,8 +407,8 @@ void sglFrustum(float left, float right, float bottom, float top, float near, fl
 	m[2]	= (right + left) / (right - left);
 	m[5]	= (2 * near) / (top - bottom);
 	m[6]	= (top + bottom) / (top - bottom);
-	m[10]	= -1.0f * ( (far + near) / (far - near) );
-	m[11]	= -1.0f * ( (2.0f * far * near) / (far - near) );
+	m[10]	= -( (far + near) / (far - near) );
+	m[11]	= -( (2.0f * far * near) / (far - near) );
 	m[14]	= -1.0f;
 
 	sglMultMatrix( m.ptr() );
