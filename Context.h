@@ -911,7 +911,7 @@ class Context
 			While looping it fills segments based on the active buffer.
 		*/
 		void			addFilledPolygon( void )
-		{		       			    	
+		{
 			for (std::vector<vertex>::iterator it = _vertexBuffer.begin(); it != _vertexBuffer.end(); ) 
 			{
 				vertex tmp = *it;
@@ -920,15 +920,21 @@ class Context
 					break;
 
 				edge e(tmp, *it);
-				_nonActiveEdges.push_back(e);
+				//_nonActiveEdges.push_back(e);
+				_edgesBeginings.push_back(e);
+				//_edgesEnds.push_back(e);
 			}
 
 			edge e(_vertexBuffer.back(), _vertexBuffer.front());
-			_nonActiveEdges.push_back(e);
-			std::sort( _nonActiveEdges.begin(), _nonActiveEdges.end(), edge::startFunctor() );
+			//_nonActiveEdges.push_back(e);
+			_edgesBeginings.push_back(e);
+			//_edgesEnds.push_back(e);
+			//std::sort( _nonActiveEdges.begin(), _nonActiveEdges.end(), edge::startFunctor() );
+			std::sort( _edgesBeginings.begin(), _edgesBeginings.end(), edge::startFunctor() );
+			//std::sort( _edgesEnds.begin(), _edgesEnds.end(), edge::endFunctor() );
 			
-			int32 minY = sglmath::round(_nonActiveEdges.front().start());
-			int32 maxY = sglmath::round(_nonActiveEdges.back().end());
+			int32 minY = sglmath::round(_edgesBeginings.front().start());
+			int32 maxY = sglmath::round(_edgesBeginings.back().end());
 
 			if (maxY > _h)
 				maxY = _h;
@@ -940,22 +946,28 @@ class Context
 			for (int32 y = minY; y < maxY; ++y)
 			{								
 				// edge activation
-				it = _nonActiveEdges.begin();
-				while (!_nonActiveEdges.empty() && sglmath::round(it->start()) == y)
+				it = _edgesBeginings.begin();
+				while (!_edgesBeginings.empty() && sglmath::round(it->start()) == y)
 				{
 					_activeEdges.push_back(*it);
-					_nonActiveEdges.erase(it);
-					it = _nonActiveEdges.begin();
+					_edgesBeginings.erase(it);
+					it = _edgesBeginings.begin();
 				}
 
-				std::sort( _activeEdges.begin(), _activeEdges.end(), edge::endFunctor() );
+				//std::sort( _activeEdges.begin(), _activeEdges.end(), edge::endFunctor() );
 
 				// edge deactivation
-				it = _activeEdges.begin();
-				while (!_activeEdges.empty() && sglmath::round(it->end()) == y)
-				{
-					_activeEdges.erase(it);
-					it = _activeEdges.begin();
+				//it = _activeEdges.begin();
+				//while (!_activeEdges.empty() && sglmath::round(it->end()) == y)
+				//{
+				//	_activeEdges.erase(it);
+				//	it = _activeEdges.begin();
+				//}
+				for(int i = 0; i<_activeEdges.size();i++){
+					if(sglmath::round(_activeEdges[i].end()) == y){
+						_activeEdges.erase(_activeEdges.begin()+i);
+						i--;
+					}
 				}
 
 				if (_activeEdges.empty())
@@ -965,9 +977,11 @@ class Context
 				{
 					edge& e = *it;
 					e.nextStep();
-				}				
+				}
 		
-				std::sort( _activeEdges.begin(), _activeEdges.end(), edge::xFunctor() );
+				//std::sort( _activeEdges.begin(), _activeEdges.end(), edge::xFunctor() );
+				sortActiveEdges();
+
 				for (it = _activeEdges.begin(); it != _activeEdges.end(); ++it)
 				{				
 					vertex a = it->toVertex();
@@ -981,7 +995,39 @@ class Context
 				}
 			}
 			_activeEdges.clear();
-			_nonActiveEdges.clear();
+			_edgesBeginings.clear();
+			//_edgesEnds.clear();
+			//_nonActiveEdges.clear();
+		}
+
+		void sortActiveEdges(){
+			bool shuffled;
+			do {
+				shuffled = false;
+				for (int i = 0; i < _activeEdges.size() - 1; i++) {
+					if (_activeEdges[i].x() > _activeEdges[i + 1].x()) {
+						edge tmp = _activeEdges[i];
+						_activeEdges[i] = _activeEdges[i+1];
+						_activeEdges[i+1] = tmp;
+						shuffled = true;
+					}
+				}
+
+				if (!shuffled) {
+					break;
+				}
+
+				shuffled = false;
+				for (int i = _activeEdges.size()-1; i > 0; i--) {
+					if (_activeEdges[i].x() < _activeEdges[i - 1].x()) {
+						edge tmp = _activeEdges[i];
+						_activeEdges[i] = _activeEdges[i-1];
+						_activeEdges[i-1] = tmp;
+						shuffled = true;
+					}
+				}
+
+			} while (shuffled);
 		}
 
 		void fillBetweenPoints(float a, float b, int32 y, float d_start = 0.0f, float d_end = 0.0f)
@@ -1299,6 +1345,8 @@ class Context
 		bool					_updateMVPMneeded;
 
 		std::vector<edge>		_nonActiveEdges;
+		std::vector<edge>		_edgesBeginings;
+		std::vector<edge>		_edgesEnds;
 		std::vector<edge>		_activeEdges;
 
 };
