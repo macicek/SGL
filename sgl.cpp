@@ -5,8 +5,14 @@
 // Author: Jaroslav Krivanek, Jiri Bittner CTU Prague
 // Author: Pavel Macenauer, Ondrej Zeman
 //---------------------------------------------------------------------------
+
 #include "Context.h"
+#include "ContextManager.h"
+
+static ContextManager cm;
+
 #include "sgl.h"
+#include "sglExtension.h"
 
 /// Current error code.
 static sglEErrorCode _libStatus = SGL_NO_ERROR;
@@ -56,8 +62,6 @@ const char* sglGetErrorString( sglEErrorCode error )
 //---------------------------------------------------------------------------
 // Initialization functions
 //---------------------------------------------------------------------------
-
-static ContextManager cm;
 
 void sglInit( void ) 
 {
@@ -330,49 +334,37 @@ void sglLoadMatrix(const float* matrix)
 }
 
 void sglMultMatrix(const float* matrix)
-{
-	Context* cc = cm.currentContext();
-
-	switch ( cc->getMatrixMode() )
-	{
-		case SGL_MODELVIEW:
-			cc->setMatrix( M_MODELVIEW, cc->getMatrix(M_MODELVIEW) * matrix );
-			break;
-
-		case SGL_PROJECTION:
-			cc->setMatrix( M_PROJECTION, cc->getMatrix(M_PROJECTION) * matrix );
-			break;
-	}
-	cc->MVPMupdate();
+{	
+	ext::sglMultMatrix( ext::sglTransposeMatrix( matrix ) );
 }
 
 // Documentation: http://en.wikipedia.org/wiki/Translation_%28geometry%29#Matrix_representation
 void sglTranslate(float x, float y, float z)
 {
 	matrix4x4 matrix;
-	sglMultMatrix( matrix.translate(x, y, z).ptr() );
+	ext::sglMultMatrix( matrix.translate(x, y, z).ptr() );
 }
 
 // Documentation: http://en.wikipedia.org/wiki/Scaling_%28geometry%29#Matrix_representation
 void sglScale(float scalex, float scaley, float scalez)
 {
 	matrix4x4 matrix;
-	sglMultMatrix( matrix.scale(scalex, scaley, scalez).ptr() );
+	ext::sglMultMatrix( matrix.scale(scalex, scaley, scalez).ptr() );
 }
 
 // Documentation: http://en.wikipedia.org/wiki/Rotation_matrix
 void sglRotate2D(float angle, float centerx, float centery)
 {
 	matrix4x4 matrix;
-	sglMultMatrix( matrix.translate(centerx, centery, 0.0f).ptr() );
-	sglMultMatrix( matrix.rotateZ(angle).ptr() );
-	sglMultMatrix( matrix.translate(-centerx, -centery, 0.0f).ptr() );
+	ext::sglMultMatrix( matrix.translate(centerx, centery, 0.0f).ptr() );
+	ext::sglMultMatrix( matrix.rotateZ(angle).ptr() );
+	ext::sglMultMatrix( matrix.translate(-centerx, -centery, 0.0f).ptr() );
 }
 
 void sglRotateY(float angle)
 {
 	matrix4x4 m;
-	sglMultMatrix( m.rotateY(angle).ptr() );	
+	ext::sglMultMatrix( m.rotateY(angle).ptr() );	
 }
 
 // OpenGL documetation: http://msdn.microsoft.com/en-us/library/windows/desktop/dd373965%28v=vs.85%29.aspx
@@ -389,7 +381,7 @@ void sglOrtho(float left, float right, float bottom, float top, float near, floa
 	m[11]	= (far + near) / (near - far);
 	m[15]	= 1.0f;
 
-	sglMultMatrix( m.ptr() );
+	ext::sglMultMatrix( m.ptr() );
 }
 
 // OpenGL documentation: http://msdn.microsoft.com/en-us/library/windows/desktop/dd373537%28v=vs.85%29.aspx
@@ -411,7 +403,7 @@ void sglFrustum(float left, float right, float bottom, float top, float near, fl
 	m[11]	= -( (2.0f * far * near) / (far - near) );
 	m[14]	= -1.0f;
 
-	sglMultMatrix( m.ptr() );
+	ext::sglMultMatrix( m.ptr() );
 }
 
 void sglViewport(int x, int y, int width, int height)

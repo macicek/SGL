@@ -920,29 +920,21 @@ class Context
 					break;
 
 				edge e(tmp, *it);
-				//_nonActiveEdges.push_back(e);
 				_edgesBeginings.push_back(e);
-				//_edgesEnds.push_back(e);
 			}
 
 			edge e(_vertexBuffer.back(), _vertexBuffer.front());
-			//_nonActiveEdges.push_back(e);
 			_edgesBeginings.push_back(e);
-			//_edgesEnds.push_back(e);
-			//std::sort( _nonActiveEdges.begin(), _nonActiveEdges.end(), edge::startFunctor() );
 			std::sort( _edgesBeginings.begin(), _edgesBeginings.end(), edge::startFunctor() );
-			//std::sort( _edgesEnds.begin(), _edgesEnds.end(), edge::endFunctor() );
 			
 			int32 minY = sglmath::round(_edgesBeginings.front().start());
 			int32 maxY = sglmath::round(_edgesBeginings.back().end());
 
-			if (maxY > _h)
-				maxY = _h;
-
-			if (minY < 0)
-				minY = 0;
-
 			std::vector<edge>::iterator it;
+			int i;
+			std::vector<vertex> drawBuffer;
+
+			vertex a, b;
 			for (int32 y = minY; y < maxY; ++y)
 			{								
 				// edge activation
@@ -952,52 +944,48 @@ class Context
 					_activeEdges.push_back(*it);
 					_edgesBeginings.erase(it);
 					it = _edgesBeginings.begin();
-				}
-
-				//std::sort( _activeEdges.begin(), _activeEdges.end(), edge::endFunctor() );
-
-				// edge deactivation
-				//it = _activeEdges.begin();
-				//while (!_activeEdges.empty() && sglmath::round(it->end()) == y)
-				//{
-				//	_activeEdges.erase(it);
-				//	it = _activeEdges.begin();
-				//}
-				for(int i = 0; i<_activeEdges.size();i++){
-					if(sglmath::round(_activeEdges[i].end()) == y){
+				}						
+			
+				int32 roundedEdgeEnd;
+				for (i = 0; i < _activeEdges.size(); ++i)
+				{
+					roundedEdgeEnd = sglmath::round(_activeEdges[i].end());
+					if (roundedEdgeEnd == y)
+					{
 						_activeEdges.erase(_activeEdges.begin()+i);
-						i--;
+						--i;
+					}
+					else
+					{						
+						edge& e = _activeEdges[i];
+						e.nextStep();
 					}
 				}
 
 				if (_activeEdges.empty())
-					continue;
-				
-				for (it = _activeEdges.begin(); it != _activeEdges.end(); ++it)
-				{
-					edge& e = *it;
-					e.nextStep();
-				}
-		
-				//std::sort( _activeEdges.begin(), _activeEdges.end(), edge::xFunctor() );
-				sortActiveEdges();
+					continue;			
+
+				sortActiveEdges();	
 
 				for (it = _activeEdges.begin(); it != _activeEdges.end(); ++it)
-				{				
-					vertex a = it->toVertex();
+				{	
+					if ( sglmath::round( it->end() ) == y )
+						continue;
 
-					++it;
-					if (it == _activeEdges.end())
+					a = it->toVertex();
+					
+					do					
+						++it;
+					while (it != _activeEdges.end() && sglmath::round( it->end() ) == y);
+						
+					if ( it == _activeEdges.end() )
 						break;
-
-					vertex b = it->toVertex();
-					fillBetweenPoints(a.x(), b.x(), y, a.z(), b.z());
+				
+					fillBetweenPoints(a.x(), it->x(), y, a.z(), it->z());			
 				}
 			}
 			_activeEdges.clear();
 			_edgesBeginings.clear();
-			//_edgesEnds.clear();
-			//_nonActiveEdges.clear();
 		}
 
 		void sortActiveEdges(){
@@ -1036,17 +1024,13 @@ class Context
 			int32 to = std::min(static_cast<int32>(_w), static_cast<int32>( b ));
 
 			if (from > to)
-				std::swap(from, to);
-
-			float step = (d_end - d_start) / static_cast<float>(to - from);
+				std::swap(from, to);			
 
 			if ( _depthTest )
 			{
-				for (uint32 x = from; x <= to; ++x)
-				{
+				float step = (d_end - d_start) / static_cast<float>(to - from);
+				for (uint32 x = from; x <= to; ++x, d_start += step)
 					setPixel(x, y, d_start, true);
-					d_start += step;
-				}
 			}
 			else
 			{			
@@ -1349,34 +1333,6 @@ class Context
 		std::vector<edge>		_edgesEnds;
 		std::vector<edge>		_activeEdges;
 
-};
-
-class ContextManager
-{
-	public:
-		Context* currentContext(){ return _currentContext; }
-		uint32 addContext(Context* context)
-		{
-			_contextContainer.push_back(context);
-
-			return _contextContainer.size()-1;
-		}
-		void setCurrentContext(Context* c){ _currentContext = c; }
-		void setCurrentContext(uint32 id){ _currentContext = _contextContainer[id]; }
-
-		uint32 contextId(){ return _contextContainer.size()-1; }
-		uint32 contextSize(){ return _contextContainer.size(); }
-
-		void destroyContext(uint32 id)
-		{
-			delete _contextContainer[id];
-
-			_contextContainer[id] = 0;
-		} 
-
-	private:
-		Context* _currentContext;
-		std::vector<Context*> _contextContainer;
 };
 
 #endif
