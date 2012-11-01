@@ -912,6 +912,9 @@ class Context
 		*/
 		void			addFilledPolygon( void )
 		{
+			int32	minY = std::numeric_limits<int32>::max(), 
+					maxY = std::numeric_limits<int32>::min();
+
 			for (std::vector<vertex>::iterator it = _vertexBuffer.begin(); it != _vertexBuffer.end(); ) 
 			{
 				vertex tmp = *it;
@@ -920,15 +923,15 @@ class Context
 					break;
 
 				edge e(tmp, *it);
+				
 				_edgesBeginings.push_back(e);
+				minY = std::min( minY, sglmath::round(e.start()) );
+				maxY = std::max( maxY, sglmath::round(e.end()) );
 			}
 
 			edge e(_vertexBuffer.back(), _vertexBuffer.front());
 			_edgesBeginings.push_back(e);
-			std::sort( _edgesBeginings.begin(), _edgesBeginings.end(), edge::startFunctor() );
-			
-			int32 minY = sglmath::round(_edgesBeginings.front().start());
-			int32 maxY = sglmath::round(_edgesBeginings.back().end());
+			std::sort( _edgesBeginings.begin(), _edgesBeginings.end(), edge::startFunctor() );						
 
 			std::vector<edge>::iterator it;
 			int i;
