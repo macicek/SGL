@@ -1,30 +1,19 @@
 #ifndef EXTENSION_H
 #define EXTENSION_H
 
-namespace ext
+namespace sglext
 {
-	float* sglTransposeMatrix (const float* matrix)
+	float* sglTransposeMatrix (float* matrix)
 	{
-		float* r = new float[16];
+		std::swap( matrix[1], matrix[4] );
+		std::swap( matrix[2], matrix[8] );
+		std::swap( matrix[3], matrix[12] );
+		
+		std::swap( matrix[6], matrix[9] );
+		std::swap( matrix[7], matrix[13] );
+		std::swap( matrix[11], matrix[14] );
 
-		r[0]	= matrix[0];
-		r[4]	= matrix[1];
-		r[8]	= matrix[2];
-		r[12]	= matrix[3];
-		r[1]	= matrix[4];
-		r[5]	= matrix[5];
-		r[9]	= matrix[6];
-		r[13]	= matrix[7];
-		r[2]	= matrix[8];
-		r[6]	= matrix[9];
-		r[10]	= matrix[10];
-		r[14]	= matrix[11];
-		r[3]	= matrix[12];
-		r[7]	= matrix[13];
-		r[11]	= matrix[14];
-		r[15]	= matrix[15];
-
-		return r;
+		return matrix;
 	}
 
 	void sglMultMatrix(const float* matrix)

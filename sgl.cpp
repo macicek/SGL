@@ -335,36 +335,37 @@ void sglLoadMatrix(const float* matrix)
 
 void sglMultMatrix(const float* matrix)
 {	
-	ext::sglMultMatrix( ext::sglTransposeMatrix( matrix ) );
+	sglext::sglMultMatrix( sglext::sglTransposeMatrix( matrix ) );
 }
 
 // Documentation: http://en.wikipedia.org/wiki/Translation_%28geometry%29#Matrix_representation
 void sglTranslate(float x, float y, float z)
 {
 	matrix4x4 matrix;
-	ext::sglMultMatrix( matrix.translate(x, y, z).ptr() );
+	sglext::sglMultMatrix( matrix.translate(x, y, z).ptr() );
 }
 
 // Documentation: http://en.wikipedia.org/wiki/Scaling_%28geometry%29#Matrix_representation
 void sglScale(float scalex, float scaley, float scalez)
 {
 	matrix4x4 matrix;
-	ext::sglMultMatrix( matrix.scale(scalex, scaley, scalez).ptr() );
+	sglext::sglMultMatrix( matrix.scale(scalex, scaley, scalez).ptr() );
 }
 
 // Documentation: http://en.wikipedia.org/wiki/Rotation_matrix
 void sglRotate2D(float angle, float centerx, float centery)
 {
 	matrix4x4 matrix;
-	ext::sglMultMatrix( matrix.translate(centerx, centery, 0.0f).ptr() );
-	ext::sglMultMatrix( matrix.rotateZ(angle).ptr() );
-	ext::sglMultMatrix( matrix.translate(-centerx, -centery, 0.0f).ptr() );
+
+	sglext::sglMultMatrix( matrix.translate(centerx, centery, 0.0f).ptr() );
+	sglext::sglMultMatrix( matrix.rotateZ(angle).ptr() );
+	sglext::sglMultMatrix( matrix.translate(-centerx, -centery, 0.0f).ptr() );
 }
 
 void sglRotateY(float angle)
 {
 	matrix4x4 m;
-	ext::sglMultMatrix( m.rotateY(angle).ptr() );	
+	sglext::sglMultMatrix( m.rotateY(angle).ptr() );	
 }
 
 // OpenGL documetation: http://msdn.microsoft.com/en-us/library/windows/desktop/dd373965%28v=vs.85%29.aspx
@@ -381,7 +382,7 @@ void sglOrtho(float left, float right, float bottom, float top, float near, floa
 	m[11]	= (far + near) / (near - far);
 	m[15]	= 1.0f;
 
-	ext::sglMultMatrix( m.ptr() );
+	sglext::sglMultMatrix( m.ptr() );
 }
 
 // OpenGL documentation: http://msdn.microsoft.com/en-us/library/windows/desktop/dd373537%28v=vs.85%29.aspx
@@ -403,7 +404,7 @@ void sglFrustum(float left, float right, float bottom, float top, float near, fl
 	m[11]	= -( (2.0f * far * near) / (far - near) );
 	m[14]	= -1.0f;
 
-	ext::sglMultMatrix( m.ptr() );
+	sglext::sglMultMatrix( m.ptr() );
 }
 
 void sglViewport(int x, int y, int width, int height)

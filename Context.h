@@ -567,22 +567,6 @@ class edge
 			}
 		};
 
-		struct endFunctor : public std::binary_function<edge, edge, bool>
-		{
-			bool operator()( edge a, edge b)
-			{
-				return	a.end() < b.end();
-			}
-		};
-
-		struct xFunctor : public std::binary_function<edge, edge, bool>
-		{
-			bool operator()( edge a, edge b)
-			{
-				return	a.x() < b.x();
-			}
-		};
-
 	private:  
 		float	_x, _y, _z;
 		float	_dx, _dy, _dz;
@@ -782,7 +766,8 @@ class Context
 			math book/wikipedia on what these are. Works the same as addArc( arc ), only adds pairs of
 			vertices for a whole ellipse and then calls line loop rasterization.
 
-			@param ellipse[in] An ellipse.
+			@param ellipse[in]	Ellipse parameters
+			@param filled[in]	Draw a filled/non-filled ellipse. Default value set to false (non-filled).
 		*/
 		void			addEllipse( ellipse e, bool filled = false )
 		{
@@ -856,7 +841,7 @@ class Context
  
 			if ( filled )
 			{
-				fillBetweenPoints( center_x - radius, center_x + radius, center_y );
+				fillBetweenPoints2D( center_x - radius, center_x + radius, center_y );
 			}
 			else
 			{
@@ -875,10 +860,10 @@ class Context
 
 				if ( filled )
 				{
-					fillBetweenPoints( center_x - x, center_x + x, center_y - y );
-					fillBetweenPoints( center_x - y, center_x + y, center_y + x );
-					fillBetweenPoints( center_x - x, center_x + x, center_y + y );
-					fillBetweenPoints( center_x - y, center_x + y, center_y - x );				
+					fillBetweenPoints2D( center_x - x, center_x + x, center_y - y );
+					fillBetweenPoints2D( center_x - y, center_x + y, center_y + x );
+					fillBetweenPoints2D( center_x - x, center_x + x, center_y + y );
+					fillBetweenPoints2D( center_x - y, center_x + y, center_y - x );				
 				}
 				else
 				{
@@ -910,11 +895,9 @@ class Context
 
 			While looping it fills segments based on the active buffer.
 		*/
-		void			addFilledPolygon( void )
-		{
-			int32	minY = std::numeric_limits<int32>::max(), 
-					maxY = std::numeric_limits<int32>::min();
-
+		void addFilledPolygon( void )
+		{			
+			int32	maxY = std::numeric_limits<int32>::min();
 			for (std::vector<vertex>::iterator it = _vertexBuffer.begin(); it != _vertexBuffer.end(); ) 
 			{
 				vertex tmp = *it;
@@ -924,29 +907,29 @@ class Context
 
 				edge e(tmp, *it);
 				
-				_edgesBeginings.push_back(e);
-				minY = std::min( minY, sglmath::round(e.start()) );
+				_edgeBeginnings.push_back(e);				
 				maxY = std::max( maxY, sglmath::round(e.end()) );
-			}
-
+			}			
 			edge e(_vertexBuffer.back(), _vertexBuffer.front());
-			_edgesBeginings.push_back(e);
-			std::sort( _edgesBeginings.begin(), _edgesBeginings.end(), edge::startFunctor() );						
+			_edgeBeginnings.push_back(e);
 
-			std::vector<edge>::iterator it;
-			int i;
-			std::vector<vertex> drawBuffer;
+			// better to use std::sort, than shuffle sort for speed
+			// shuffle sort is used later on, when the edges are already sorted
+			std::sort( _edgeBeginnings.begin(), _edgeBeginnings.end(), edge::startFunctor() );		
 
-			vertex a, b;
+			uint32 i, minY = sglmath::round( _edgeBeginnings.front().start() );
+
+			std::vector<edge>::iterator it;					
+			vertex tmp;
 			for (int32 y = minY; y < maxY; ++y)
 			{								
 				// edge activation
-				it = _edgesBeginings.begin();
-				while (!_edgesBeginings.empty() && sglmath::round(it->start()) == y)
+				it = _edgeBeginnings.begin();
+				while (!_edgeBeginnings.empty() && sglmath::round(it->start()) == y)
 				{
 					_activeEdges.push_back(*it);
-					_edgesBeginings.erase(it);
-					it = _edgesBeginings.begin();
+					_edgeBeginnings.erase(it);
+					it = _edgeBeginnings.begin();
 				}						
 			
 				int32 roundedEdgeEnd;
@@ -975,8 +958,7 @@ class Context
 					if ( sglmath::round( it->end() ) == y )
 						continue;
 
-					a = it->toVertex();
-					
+					tmp = it->toVertex();					
 					do					
 						++it;
 					while (it != _activeEdges.end() && sglmath::round( it->end() ) == y);
@@ -984,62 +966,91 @@ class Context
 					if ( it == _activeEdges.end() )
 						break;
 				
-					fillBetweenPoints(a.x(), it->x(), y, a.z(), it->z());			
+					_depthTest ? fillBetweenPoints3D(tmp.x(), it->x(), y, tmp.z(), it->z()) : fillBetweenPoints2D(tmp.x(), it->x(), y);			
 				}
 			}
 			_activeEdges.clear();
-			_edgesBeginings.clear();
+			_edgeBeginnings.clear();
 		}
 
-		void sortActiveEdges(){
-			bool shuffled;
-			do {
-				shuffled = false;
-				for (int i = 0; i < _activeEdges.size() - 1; i++) {
-					if (_activeEdges[i].x() > _activeEdges[i + 1].x()) {
-						edge tmp = _activeEdges[i];
-						_activeEdges[i] = _activeEdges[i+1];
-						_activeEdges[i+1] = tmp;
-						shuffled = true;
+		/// Sort for active edges
+		/**
+			Improved shuffle sort for active edges. First shuffle sort sorts from the beginning. If the edges are not sorted
+			then it sorts from the end.
+		*/
+		void sortActiveEdges()
+		{
+			bool sorted;
+			uint32 i = 0;
+			do 
+			{
+				sorted = false;
+				for (; i < _activeEdges.size() - 1; ++i)
+				{
+					if ( _activeEdges[i].x() > _activeEdges[i + 1].x() )
+					{
+						std::swap( _activeEdges[i], _activeEdges[i+1] );				
+						sorted = true;
 					}
 				}
 
-				if (!shuffled) {
-					break;
-				}
-
-				shuffled = false;
-				for (int i = _activeEdges.size()-1; i > 0; i--) {
-					if (_activeEdges[i].x() < _activeEdges[i - 1].x()) {
-						edge tmp = _activeEdges[i];
-						_activeEdges[i] = _activeEdges[i-1];
-						_activeEdges[i-1] = tmp;
-						shuffled = true;
+				if (!sorted)
+					break;				
+					
+				for (--i; i > 0; --i)
+				{
+					if ( _activeEdges[i].x() < _activeEdges[i - 1].x() )
+					{
+						std::swap( _activeEdges[i], _activeEdges[i-1]);						
+						sorted = true;
 					}
 				}
 
-			} while (shuffled);
+			} while (sorted);
 		}
 
-		void fillBetweenPoints(float a, float b, int32 y, float d_start = 0.0f, float d_end = 0.0f)
+		// Line drawing in 3D
+		/**
+			Draws a line from [x_a, y] to [x_b, y] in 3D, therefore it takes depth into account
+			computes a depth step a and changes depth of the pixels throughout the iteration.
+
+			@param x_a[in]	Starting x-coordinate
+			@param x_b[in]	Ending x-coordinate
+			@param y[in]	Y-coordinate, which stays the same
+			@param d_a[in]	Starting depth
+			@param d_b[in]	Ending depth
+		*/
+		void fillBetweenPoints3D(float x_a, float x_b, int32 y, float d_a, float d_b)
 		{		
-			int32 from = std::max(0, static_cast<int32>( a ));
-			int32 to = std::min(static_cast<int32>(_w), static_cast<int32>( b ));
+			int32 from = static_cast<int32>( x_a );
+			int32 to = static_cast<int32>( x_b );
+
+			if (from > to)
+				std::swap(from, to);			
+			
+			float step = (d_b - d_a) / static_cast<float>(to - from);
+			for (uint32 x = from; x <= to; ++x, d_a += step)
+				setPixel(x, y, d_a, true);
+		}
+
+		// Line draing in 2D
+		/**
+			Optimalized version for 2D. It's not needed to compute depth, so we can leave it out.
+
+			@param x_a[in]	Starting x-coordinate
+			@param x_b[in]	Ending x-coordinate
+			@param y[in]	Y-coordinate, which stays the same
+		*/
+		void fillBetweenPoints2D(float x_a, float x_b, int32 y)
+		{		
+			int32 from = static_cast<int32>( x_a );
+			int32 to = static_cast<int32>( x_b );
 
 			if (from > to)
 				std::swap(from, to);			
 
-			if ( _depthTest )
-			{
-				float step = (d_end - d_start) / static_cast<float>(to - from);
-				for (uint32 x = from; x <= to; ++x, d_start += step)
-					setPixel(x, y, d_start, true);
-			}
-			else
-			{			
-				for (uint32 x = from; x < to; ++x)
-					setPixel(x, y);
-			}
+			for (uint32 x = from; x < to; ++x)
+				setPixel(x, y);
 		}
 
 		void			MVPMupdate()
@@ -1211,17 +1222,27 @@ class Context
 			_colorBuffer[i] = color;
 		}
 
+		/// Sets matrix mode
 		/**
-			Sets a mode in which we operate when multiplying matrices.
+			Sets a mode in which we operate when multiplying matrices. Values can an be 
+			SGL_PROJECTION or SGL_MODELVIEW.
 			
 			@param mode[in] Mode to apply matrix transformation.
 		*/
 		void			setMatrixMode( sglEMatrixMode mode )
 		{ _currentMatrixMode = mode; }
 
+		/// Returns current matrix mode
 		sglEMatrixMode	getMatrixMode()
 		{ return _currentMatrixMode; }
 
+		/// Sets viewport
+		/**
+			Sets viewport data structure and calculates a viewport transformation matrix.
+			The matrix is generated as a method of matrix4x4.
+			
+			@param vp[in] Viewport data structure
+		*/
 		void			setViewport( viewport vp )
 		{ 
 			_viewport = vp;
@@ -1234,25 +1255,29 @@ class Context
 			_matrix[M_VIEWPORT] = matrix4x4().viewport( width, height, offsetX, offsetY );
 		}
 
+		/// Returns viewport data
 		viewport		getViewport() const
 		{ return _viewport; }
 
+		/// Enables/disables depth
+		/**
+			@param value[in] True to enable, false to disable
+		*/
 		void			enableDepth(bool value)
 		{ _depthTest = value; }
+
+		/// Checks if we are between sglBegin and sglEnd calls
 		bool isInCycle() const
 		{
 			return _inCycle;
 		}
 
-		void setInCycle(bool value)
-		{
-			_inCycle = value;
-		}
+		/// Sets if we are between sglBegin/sglEnd or not
+		void setInCycle (bool value)
+		{ _inCycle = value; }
 
-		std::vector<matrix4x4>* getMatrixStack()
-		{
-			return _matrixStack;
-		}
+		std::vector<matrix4x4>* getMatrixStack() const
+		{ return _matrixStack; }
 
 		void setMatrix( contextMatrices type, matrix4x4 m )
 		{ _matrix[type] = m; }
@@ -1267,13 +1292,10 @@ class Context
 		{ return _currentAreaMode; }
 
 		void setClearColor(float r, float g, float b)
-		{
-			setClearColor(color_rgba(r, g, b));
-		}
+		{ setClearColor(color_rgba(r, g, b)); }
+
 		void setClearColor(color_rgba color)
-		{
-			_clearColor = color;
-		}
+		{ _clearColor = color; }
 
 		void clearColor()
 		{
@@ -1332,7 +1354,7 @@ class Context
 		bool					_updateMVPMneeded;
 
 		std::vector<edge>		_nonActiveEdges;
-		std::vector<edge>		_edgesBeginings;
+		std::vector<edge>		_edgeBeginnings;
 		std::vector<edge>		_edgesEnds;
 		std::vector<edge>		_activeEdges;
 
