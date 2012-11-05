@@ -5,7 +5,7 @@ namespace sglext
 {
 	float* sglTransposeMatrix ( const float* matrix )
 	{
-		float* m = new float(16);
+		float* m = new float[16];
 
 		m[0] = matrix[0];
 		m[1] = matrix[4];
