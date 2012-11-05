@@ -536,13 +536,14 @@ class edge
 		}
     
 		void nextStep()
-		{
-			_y += 1.0f;
+		{			
 			if (_y != _start_y)
 			{
 				_x += _dx;
 				_z += _dz;
 			}
+
+			_y += 1.0f;
 		} 
 
 		bool operator== (const edge& line)

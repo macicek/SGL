@@ -3,17 +3,31 @@
 
 namespace sglext
 {
-	float* sglTransposeMatrix (float* matrix)
+	float* sglTransposeMatrix ( const float* matrix )
 	{
-		std::swap( matrix[1], matrix[4] );
-		std::swap( matrix[2], matrix[8] );
-		std::swap( matrix[3], matrix[12] );
-		
-		std::swap( matrix[6], matrix[9] );
-		std::swap( matrix[7], matrix[13] );
-		std::swap( matrix[11], matrix[14] );
+		float* m = new float(16);
 
-		return matrix;
+		m[0] = matrix[0];
+		m[1] = matrix[4];
+		m[2] = matrix[8];
+		m[3] = matrix[12];
+		
+		m[4] = matrix[1];
+		m[5] = matrix[5];
+		m[6] = matrix[9];
+		m[7] = matrix[13];
+
+		m[8] = matrix[2];
+		m[9] = matrix[6];
+		m[10] = matrix[10];
+		m[11] = matrix[14];
+
+		m[12] = matrix[3];
+		m[13] = matrix[7];
+		m[14] = matrix[11];
+		m[15] = matrix[15];
+
+		return m;
 	}
 
 	void sglMultMatrix(const float* matrix)
