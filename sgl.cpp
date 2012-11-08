@@ -6,13 +6,14 @@
 // Author: Pavel Macenauer, Ondrej Zeman
 //---------------------------------------------------------------------------
 
+#include "sgl.h"
+#include "Defines.h"
+
 #include "Context.h"
 #include "ContextManager.h"
 
 static ContextManager cm;
-
-#include "sgl.h"
-#include "sglExtension.h"
+#include "sglExtension.h" // uses ContextManager!
 
 /// Current error code.
 static sglEErrorCode _libStatus = SGL_NO_ERROR;
@@ -150,46 +151,57 @@ void sglEnd(void)
 		return;
 	}
 
-	switch ( cc->getAreaMode() )
+	if ( cc->isRaytracing() && cc->getDrawingMode() == SGL_POLYGON )
 	{
-		// SGL_LINE
-		case SGL_LINE:
+		// in this case we construct a triangle
+		if ( cc->getVertexBufferSize() != 3 )
+			return;
+
+		cc->addTriangle();
+	}
+	else
+	{
+		switch ( cc->getAreaMode() )
 		{
-			switch ( cc->getDrawingMode() )
+			// SGL_LINE
+			case SGL_LINE:
 			{
-				case SGL_POINTS:
-					cc->rasterizePoints();
-					break;
+				switch ( cc->getDrawingMode() )
+				{
+					case SGL_POINTS:
+						cc->rasterizePoints();
+						break;
 
-				case SGL_LINES:
-					cc->rasterizeLines();
-					break;
+					case SGL_LINES:
+						cc->rasterizeLines();
+						break;
 
-				case SGL_LINE_STRIP:
-					cc->rasterizeLineStrip();
-					break;
+					case SGL_LINE_STRIP:
+						cc->rasterizeLineStrip();
+						break;
 
-				case SGL_LINE_LOOP:
-				case SGL_POLYGON:
-					cc->rasterizeLineLoop();
-					break;
+					case SGL_LINE_LOOP:
+					case SGL_POLYGON:
+						cc->rasterizeLineLoop();
+						break;
+				}
+				break;
 			}
-			break;
-		}
-		// END SGL_LINE
+			// END SGL_LINE
 
-		// SGL_FILL
-		case SGL_FILL:
-		{
-			switch ( cc->getDrawingMode() )
-			{				
-				case SGL_POLYGON:	
-					cc->addFilledPolygon();
-					break;	
+			// SGL_FILL
+			case SGL_FILL:
+			{
+				switch ( cc->getDrawingMode() )
+				{				
+					case SGL_POLYGON:	
+						cc->addFilledPolygon();
+						break;	
+				}
+				break;
 			}
-			break;
+			// END SGL_FILL
 		}
-		// END SGL_FILL
 	}
 	cc->clearVertexBuffer();
 	cc->setInCycle(false);
@@ -472,14 +484,23 @@ void sglDisable( sglEEnableFlags cap )
 // RayTracing oriented functions
 //---------------------------------------------------------------------------
 
-void sglBeginScene() {}
+void sglBeginScene()
+{
+	cm.currentContext()->setRaytracing( true );
+}
 
-void sglEndScene() {}
+void sglEndScene()
+{
+	cm.currentContext()->setRaytracing( false );
+}
 
 void sglSphere(const float x,
 			   const float y,
 			   const float z,
-			   const float radius) {}
+			   const float radius)
+{
+	cm.currentContext()->addPrimitive( new Sphere(x, y, z, radius) );
+}
 
 void sglMaterial(const float r,
 				 const float g,
@@ -488,14 +509,20 @@ void sglMaterial(const float r,
 				 const float ks,
 				 const float shine,
 				 const float T,
-				 const float ior) {}
+				 const float ior)
+{
+	cm.currentContext()->setMaterial( material( rgb<float>(r, g, b), kd, ks, shine, T, ior ) );
+}
 
 void sglPointLight(const float x,
 				   const float y,
 				   const float z,
 				   const float r,
 				   const float g,
-				   const float b) {}
+				   const float b)
+{
+	cm.currentContext()->addLight( new PointLight( vector3<float>(x, y, z), rgb<float>(r, g, b) ) );
+}
 
 void sglRayTraceScene() {}
 

@@ -1,7 +1,5 @@
-#ifndef CONTEXT_H
-#define CONTEXT_H
-
-#define _SGL_EXPERIMENTAL
+#ifndef __CONTEXT_H__
+#define __CONTEXT_H__
 
 #include <algorithm>
 #include <vector>
@@ -9,8 +7,12 @@
 #include <cmath>
 #include <functional>
 
-#include "sgl.h"
-#include "Mathematics.h"
+
+#include "Color.h"
+#include "Geometry.h"
+#include "Primitive.h"
+#include "RayTracer.h"
+#include "PointLight.h"
 
 enum contextMatrices
 {
@@ -20,23 +22,6 @@ enum contextMatrices
 	M_VIEWPORT,
 
 	M_SIZE
-};
-
-struct color_rgba
-{
-	public:
-		color_rgba(float red = 0.0f, float green = 0.0f, float blue = 0.0f) : _r(red), _g(green), _b(blue) {}
-
-		void setRed(float value){ _r = value; }
-		void setGreen(float value){ _g = value; }
-		void setBlue(float value){ _b = value; }
-
-		float red(){ return _r; }
-		float green(){ return _g; }
-		float blue(){ return _b; }
-
-	private:
-		float _r, _g, _b;
 };
 
 struct viewport
@@ -63,541 +48,6 @@ struct viewport
 				_offsetY;
 };
 
-struct matrix4x4
-{
-	public:
-		matrix4x4()
-		{
-			null();
-		}
-
-		// float get(int c) const { return _container[c]; }
-		float get(uint8 x, uint8 y) const { return _container[y * 4 + x]; }
-		void set(uint8 x, uint8 y, float value){ _container[y * 4 + x] = value; }
-		
-		void set(uint8 c, float value){ _container[c] = value; }
-		float& operator[](uint32 pos)
-		{
-			return _container[pos];
-		}
-		float operator[](uint32 pos) const
-		{
-			return _container[pos];
-		}
-
-		matrix4x4& operator= (const matrix4x4& a)
-		{
-			for (int i = 0; i < 16; ++i)
-				_container[i] = a[i];
-
-			return *this;
-		}		
-
-		matrix4x4 operator* (const matrix4x4& a)
-		{
-			matrix4x4 result;
-
-			result[0]	= _container[0] * a[0]		+ _container[1] * a[4]		+ _container[2] * a[8]		+ _container[3] * a[12];
-			result[1]	= _container[0] * a[1]		+ _container[1] * a[5]		+ _container[2] * a[9]		+ _container[3] * a[13];
-			result[2]	= _container[0] * a[2]		+ _container[1] * a[6]		+ _container[2] * a[10]		+ _container[3] * a[14];
-			result[3]	= _container[0] * a[3]		+ _container[1] * a[7]		+ _container[2] * a[11]		+ _container[3] * a[15];
-
-			result[4]	= _container[4] * a[0]		+ _container[5] * a[4]		+ _container[6] * a[8]		+ _container[7] * a[12];
-			result[5]	= _container[4] * a[1]		+ _container[5] * a[5]		+ _container[6] * a[9]		+ _container[7] * a[13];
-			result[6]	= _container[4] * a[2]		+ _container[5] * a[6]		+ _container[6] * a[10]		+ _container[7] * a[14];
-			result[7]	= _container[4] * a[3]		+ _container[5] * a[7]		+ _container[6] * a[11]		+ _container[7] * a[15];
-
-			result[8]	= _container[8] * a[0]		+ _container[9] * a[4]		+ _container[10] * a[8]		+ _container[11] * a[12];
-			result[9]	= _container[8] * a[1]		+ _container[9] * a[5]		+ _container[10] * a[9]		+ _container[11] * a[13];
-			result[10]	= _container[8] * a[2]		+ _container[9] * a[6]		+ _container[10] * a[10]	+ _container[11] * a[14];
-			result[11]	= _container[8] * a[3]		+ _container[9] * a[7]		+ _container[10] * a[11]	+ _container[11] * a[15];
-
-			result[12]	= _container[12] * a[0]		+ _container[13] * a[4]		+ _container[14] * a[8]		+ _container[15] * a[12];
-			result[13]	= _container[12] * a[1]		+ _container[13] * a[5]		+ _container[14] * a[9]		+ _container[15] * a[13];
-			result[14]	= _container[12] * a[2]		+ _container[13] * a[6]		+ _container[14] * a[10]	+ _container[15] * a[14];
-			result[15]	= _container[12] * a[3]		+ _container[13] * a[7]		+ _container[14] * a[11]	+ _container[15] * a[15];
-						
-			return result;			
-		}
-
-		matrix4x4 operator* (const float* a) const
-		{
-			matrix4x4 result;
-
-			result[0]	= _container[0] * a[0]		+ _container[1] * a[4]		+ _container[2] * a[8]		+ _container[3] * a[12];
-			result[1]	= _container[0] * a[1]		+ _container[1] * a[5]		+ _container[2] * a[9]		+ _container[3] * a[13];
-			result[2]	= _container[0] * a[2]		+ _container[1] * a[6]		+ _container[2] * a[10]		+ _container[3] * a[14];
-			result[3]	= _container[0] * a[3]		+ _container[1] * a[7]		+ _container[2] * a[11]		+ _container[3] * a[15];
-
-			result[4]	= _container[4] * a[0]		+ _container[5] * a[4]		+ _container[6] * a[8]		+ _container[7] * a[12];
-			result[5]	= _container[4] * a[1]		+ _container[5] * a[5]		+ _container[6] * a[9]		+ _container[7] * a[13];
-			result[6]	= _container[4] * a[2]		+ _container[5] * a[6]		+ _container[6] * a[10]		+ _container[7] * a[14];
-			result[7]	= _container[4] * a[3]		+ _container[5] * a[7]		+ _container[6] * a[11]		+ _container[7] * a[15];
-
-			result[8]	= _container[8] * a[0]		+ _container[9] * a[4]		+ _container[10] * a[8]		+ _container[11] * a[12];
-			result[9]	= _container[8] * a[1]		+ _container[9] * a[5]		+ _container[10] * a[9]		+ _container[11] * a[13];
-			result[10]	= _container[8] * a[2]		+ _container[9] * a[6]		+ _container[10] * a[10]	+ _container[11] * a[14];
-			result[11]	= _container[8] * a[3]		+ _container[9] * a[7]		+ _container[10] * a[11]	+ _container[11] * a[15];
-
-			result[12]	= _container[12] * a[0]		+ _container[13] * a[4]		+ _container[14] * a[8]		+ _container[15] * a[12];
-			result[13]	= _container[12] * a[1]		+ _container[13] * a[5]		+ _container[14] * a[9]		+ _container[15] * a[13];
-			result[14]	= _container[12] * a[2]		+ _container[13] * a[6]		+ _container[14] * a[10]	+ _container[15] * a[14];
-			result[15]	= _container[12] * a[3]		+ _container[13] * a[7]		+ _container[14] * a[11]	+ _container[15] * a[15];
-						
-			return result;		
-		}
-
-		matrix4x4& null()
-		{
-			_container[0]	= 0.0f;
-			_container[1]	= 0.0f;
-			_container[2]	= 0.0f;
-			_container[3]	= 0.0f;
-
-			_container[4]	= 0.0f;
-			_container[5]	= 0.0f;
-			_container[6]	= 0.0f;
-			_container[7]	= 0.0f;
-
-			_container[8]	= 0.0f;
-			_container[9]	= 0.0f;
-			_container[10]	= 0.0f;
-			_container[11]	= 0.0f;
-
-			_container[12]	= 0.0f;
-			_container[13]	= 0.0f;
-			_container[14]	= 0.0f;
-			_container[15]	= 0.0f;
-
-			return *this;
-		}
-
-		matrix4x4& identity()
-		{
-			_container[0]	= 1.0f;
-			_container[1]	= 0.0f;
-			_container[2]	= 0.0f;
-			_container[3]	= 0.0f;
-
-			_container[4]	= 0.0f;
-			_container[5]	= 1.0f;
-			_container[6]	= 0.0f;
-			_container[7]	= 0.0f;
-
-			_container[8]	= 0.0f;
-			_container[9]	= 0.0f;
-			_container[10]	= 1.0f;
-			_container[11]	= 0.0f;
-
-			_container[12]	= 0.0f;
-			_container[13]	= 0.0f;
-			_container[14]	= 0.0f;
-			_container[15]	= 1.0f;
-
-			return *this;
-		}
-
-		matrix4x4& translate( float x, float y, float z )
-		{
-			_container[0]	= 1.0f;
-			_container[1]	= 0.0f;
-			_container[2]	= 0.0f;
-			_container[3]	= x;
-
-			_container[4]	= 0.0f;
-			_container[5]	= 1.0f;
-			_container[6]	= 0.0f;
-			_container[7]	= y;
-
-			_container[8]	= 0.0f;
-			_container[9]	= 0.0f;
-			_container[10]	= 1.0f;
-			_container[11]	= z;
-
-			_container[12]	= 0.0f;
-			_container[13]	= 0.0f;
-			_container[14]	= 0.0f;
-			_container[15]	= 1.0f;
-
-			return *this;
-		}
-
-		matrix4x4& rotateZ( float angle )
-		{
-			float s = sin(angle);
-			float c = cos(angle);
-
-			_container[0]	= c;
-			_container[1]	= -s;
-			_container[2]	= 0.0f;
-			_container[3]	= 0.0f;
-
-			_container[4]	= s;
-			_container[5]	= c;
-			_container[6]	= 0.0f;
-			_container[7]	= 0.0f;
-
-			_container[8]	= 0.0f;
-			_container[9]	= 0.0f;
-			_container[10]	= 1.0f;
-			_container[11]	= 0.0f;
-
-			_container[12]	= 0.0f;
-			_container[13]	= 0.0f;
-			_container[14]	= 0.0f;
-			_container[15]	= 1.0f;
-
-			return *this;
-		}
-
-		matrix4x4& rotateY( float angle )
-		{
-			float s = sin(angle);
-			float c = cos(angle);
-
-			_container[0]	= c;
-			_container[1]	= 0.0f;
-			_container[2]	= -s;
-			_container[3]	= 0.0f;
-
-			_container[4]	= 0.0f;
-			_container[5]	= 1.0f;
-			_container[6]	= 0.0f;
-			_container[7]	= 0.0f;
-
-			_container[8]	= s;
-			_container[9]	= 0.0f;
-			_container[10]	= c;
-			_container[11]	= 0.0f;
-
-			_container[12]	= 0.0f;
-			_container[13]	= 0.0f;
-			_container[14]	= 0.0f;
-			_container[15]	= 1.0f;
-
-			return *this;
-		}
-
-		matrix4x4& scale( float scale_x, float scale_y, float scale_z )
-		{
-			_container[0]	= scale_x;
-			_container[1]	= 0.0f;
-			_container[2]	= 0.0f;
-			_container[3]	= 0.0f;
-
-			_container[4]	= 0.0f;
-			_container[5]	= scale_y;
-			_container[6]	= 0.0f;
-			_container[7]	= 0.0f;
-
-			_container[8]	= 0.0f;
-			_container[9]	= 0.0f;
-			_container[10]	= scale_z;
-			_container[11]	= 0.0f;
-
-			_container[12]	= 0.0f;
-			_container[13]	= 0.0f;
-			_container[14]	= 0.0f;
-			_container[15]	= 1.0f;
-
-			return *this;
-		}
-		
-		matrix4x4& rotate_around_vector( float angle, float x = 0.0f, float y = 0.0f, float z = 1.0f )
-		{
-			float	s = sin(angle);
-			float	c = cos(angle);
-
-			_container[0]	= powf(x, 2.0f) * (1 - c) + c;
-			_container[1]	= x*y * (1.0f-c) - z*s;
-			_container[2]	= x*z * (1.0f-c) + y*s;
-			_container[3]	= 0.0f;
-
-			_container[4]	= y*x * (1.0f-c) + z*s;
-			_container[5]	= powf(y, 2.0f) * (1.0f-c) + c;
-			_container[6]	= y*z * (1.0f-c) - x*s;
-			_container[7]	= 0.0f;
-
-			_container[8]	= x*z * (1.0f-c) - y*s;
-			_container[9]	= y*z * (1.0f-c) + x*s;
-			_container[10]	= powf(z, 2.0f) * (1.0f-c) + c;
-			_container[11]	= 0.0f;
-
-			_container[12]	= 0.0f;
-			_container[13]	= 0.0f;
-			_container[14]	= 0.0f;
-			_container[15]	= 1.0f;
-
-			return *this;
-		}
-
-		matrix4x4& viewport( float width, float height, float offsetX, float offsetY )
-		{
-			_container[0]	= width / 2.0f;
-			_container[1]	= 0.0f;
-			_container[2]	= 0.0f;
-			_container[3]	= offsetX + width / 2.0f;
-
-			_container[4]	= 0.0f;
-			_container[5]	= height / 2.0f;
-			_container[6]	= 0.0f;
-			_container[7]	= offsetY + height / 2.0f;
-
-			_container[8]	= 0.0f;
-			_container[9]	= 0.0f;
-			_container[10]	= 1.0f;
-			_container[11]	= 0.0f;
-
-			_container[12]	= 0.0f;
-			_container[13]	= 0.0f;
-			_container[14]	= 0.0f;
-			_container[15]	= 1.0f;
-
-			return *this;		
-		}
-
-		const float* ptr() { return _container; }
-
-	private:
-		float _container[16];
-};
-matrix4x4 operator* (const float* a, const matrix4x4& b)
-{
-	matrix4x4 result;
-	
-	result[0]	= a[0] * b[0]		+ a[1] * b[4]		+ a[2] * b[8]		+ a[3] * b[12];
-	result[1]	= a[0] * b[1]		+ a[1] * b[5]		+ a[2] * b[9]		+ a[3] * b[13];
-	result[2]	= a[0] * b[2]		+ a[1] * b[6]		+ a[2] * b[10]		+ a[3] * b[14];
-	result[3]	= a[0] * b[3]		+ a[1] * b[7]		+ a[2] * b[11]		+ a[3] * b[15];
-
-	result[4]	= a[4] * b[0]		+ a[5] * b[4]		+ a[6] * b[8]		+ a[7] * b[12];
-	result[5]	= a[4] * b[1]		+ a[5] * b[5]		+ a[6] * b[9]		+ a[7] * b[13];
-	result[6]	= a[4] * b[2]		+ a[5] * b[6]		+ a[6] * b[10]		+ a[7] * b[14];
-	result[7]	= a[4] * b[3]		+ a[5] * b[7]		+ a[6] * b[11]		+ a[7] * b[15];
-
-	result[8]	= a[8] * b[0]		+ a[9] * b[4]		+ a[10] * b[8]		+ a[11] * b[12];
-	result[9]	= a[8] * b[1]		+ a[9] * b[5]		+ a[10] * b[9]		+ a[11] * b[13];
-	result[10]	= a[8] * b[2]		+ a[9] * b[6]		+ a[10] * b[10]		+ a[11] * b[14];
-	result[11]	= a[8] * b[3]		+ a[9] * b[7]		+ a[10] * b[11]		+ a[11] * b[15];
-
-	result[12]	= a[12] * b[0]		+ a[13] * b[4]		+ a[14] * b[8]		+ a[15] * b[12];
-	result[13]	= a[12] * b[1]		+ a[13] * b[5]		+ a[14] * b[9]		+ a[15] * b[13];
-	result[14]	= a[12] * b[2]		+ a[13] * b[6]		+ a[14] * b[10]		+ a[15] * b[14];
-	result[15]	= a[12] * b[3]		+ a[13] * b[7]		+ a[14] * b[11]		+ a[15] * b[15];
-	
-	return result;	
-}
-
-struct vertex
-{
-	public:
-		vertex(){ };
-		vertex(float x, float y) : _x(x), _y(y), _z(0.0f), _w(1.0f) {}
-		vertex(float x, float y, float z) : _x(x), _y(y), _z(z),  _w(1.0f) {}
-		vertex(float x, float y, float z, float w) : _x(x), _y(y), _z(z),  _w(w) {}
-
-		vertex& operator= (const vertex& a)
-		{
-			_x = a.x();
-			_y = a.y();
-			_z = a.z();
-			_w = a.w();
-
-			return *this;
-		}
-		
-		float x() const { return _x; }
-		float y() const { return _y; }
-		float z() const { return _z; }
-		float w() const { return _w; }
-
-		void setX(float x){ _x = x; }
-		void setY(float y){ _y = y; }
-		void setZ(float z){ _z = z; }
-		void setW(float w){ _w = w; }
-
-		bool operator==(const vertex& v)
-		{
-			if (_x == v.x() && _y == v.y() && _z == v.z())
-				return true;
-		}
-
-		vertex& operator*=(const matrix4x4& m)
-		{
-			float	__x = _x,
-					__y = _y,
-					__z = _z,
-					__w = _w;
-
-			_x = __x * m[0] +	__y * m[1] +	__z * m[2] +	__w * m[3];
-			_y = __x * m[4] +	__y * m[5] +	__z * m[6] +	__w * m[7];
-			_z = __x * m[8] +	__y * m[9] +	__z * m[10] +	__w * m[11];
-			_w = __x * m[12] +	__y * m[13] +	__z * m[14] +	__w * m[15];
-
-			return *this;		
-		}
-
-		vertex& wNormalize()
-		{
-			if (_w == 1.0f /* no normalization */ || _w == 0.0f /* no depth */)
-				return *this;
-
-			_x /= _w;
-			_y /= _w;
-			_z /= _w;
-
-			_w = 1.0f;
-
-			return *this;
-		}
-
-		vertex& vectorNormalize()
-		{
-			float magnitute = sqrtf(powf(_x, 2.0f) + powf(_y, 2.0f) + powf(_z, 2.0f));
-
-			_x /= magnitute;
-			_y /= magnitute;
-			_z /= magnitute;
-
-			return *this;
-		}
-
-	private:
-		float _x, _y, _z, _w;
-};
-
-typedef		std::vector<vertex>::iterator VertexIterator;
-
-struct circle
-{
-	public:
-		circle(float x, float y, float radius) : _center(vertex(x, y, 0.0f)), _r(radius) {}
-		circle(float x, float y, float z, float radius) : _center(vertex(x, y, z)), _r(radius) {} 
-		circle(vertex center, float radius) : _center(center), _r(radius) {}
-
-		float x() const { return _center.x(); }
-		float y() const { return _center.y(); }
-		float z() const { return _center.z(); }
-
-		float radius() const { return _r; }
-
-		vertex center() const { return _center; }
-
-	private:
-		vertex _center;
-		float _r;
-};
-
-struct ellipse
-{
-	public:
-		ellipse(float x, float y, float z, float a, float b) : _center(vertex(x, y, z)), _a(a), _b(b) {}
-		ellipse(float x, float y, float a, float b) : _center(vertex(x, y, 0.0f)), _a(a), _b(b) {}
-		ellipse(vertex center, float a, float b) : _center(center), _a(a), _b(b) {}
-
-		float x() const { return _center.x(); }
-		float y() const { return _center.y(); }
-		float z() const { return _center.z(); }
-
-		float a() const { return _a; }
-		float b() const { return _b; }
-
-		vertex center() const { return _center; }
-
-	private:
-		vertex _center;
-		float _a, _b;
-};
-
-class edge 
-{
-	public:  
-		edge(vertex a, vertex b)
-		{
-			if(b.y() < a.y())
-				std::swap( a, b );
-
-			_dy		= b.y() - a.y();
-
-			_dx		= ( b.x() - a.x() ) / _dy;
-			_dz		= ( b.z() - a.z() ) / _dy;
-
-			_x		= a.x();
-			_y		= a.y();
-			_z		= a.z();
-
-			_start_y = a.y();
-			_end_y	= b.y();
-		}
-    
-		vertex toVertex()
-		{
-			return vertex(_x, _y, _z);
-		}
-    
-		void nextStep()
-		{			
-			if (_y != _start_y)
-			{
-				_x += _dx;
-				_z += _dz;
-			}
-
-			_y += 1.0f;
-		} 
-
-		bool operator== (const edge& line)
-		{
-			return	_x == line.x() &&
-					_y == line.y() &&
-					_z == line.z();
-		}
-
-		float x() const { return _x; }
-		float y() const { return _y; }
-		float z() const { return _z; }
-
-		float start() const { return _start_y; }
-		float end() const { return _end_y; }
-
-		struct startFunctor : public std::binary_function<edge, edge, bool>
-		{
-			bool operator()( edge a, edge b)
-			{
-				return a.start() < b.start();
-			}
-		};
-
-	private:  
-		float	_x, _y, _z;
-		float	_dx, _dy, _dz;
-
-		float	_start_y,
-				_end_y;
-};
-
-struct arc
-{
-	public:
-		arc(float x, float y, float z, float radius, float from, float to) : _center(vertex(x, y, z)), _r(radius), _f(from), _t(to) {}
-		arc(float x, float y, float radius, float from, float to) : _center(vertex(x, y, 0.0f)), _r(radius), _f(from), _t(to) {}
-		arc(vertex center, float radius, float from, float to) : _center(center), _r(radius), _f(from), _t(to) {}
-
-		float x() const { return _center.x(); }
-		float y() const { return _center.y(); }
-		float z() const { return _center.z(); }
-
-		float from() const { return _f; }
-		float to() const { return _t; }
-		float radius() const { return _r; }
-
-		vertex center() const { return _center; }
-
-	private:
-		vertex _center;
-		float _r, _f, _t;
-};
-
 /// A context class.
 /**
 	A context class represents a single scene or a context. Multiple contexts can be held in memory at the
@@ -617,7 +67,7 @@ class Context
 		Context(uint32 width = 0, uint32 height = 0) : _w(width), _h(height)
 		{ 
 			_matrixStack		= new std::vector<matrix4x4>;
-			_colorBuffer		= new color_rgba[width * height];
+			_colorBuffer		= new rgb<float>[width * height];
 			
 			initZBuffer();
 			
@@ -646,7 +96,7 @@ class Context
 
 			@param color[in] RGBA color value.
 		*/
-		void			setCurrentColor(color_rgba color)
+		void			setCurrentColor(rgb<float> color)
 		{ _currentColor = color; }
 		
 		/// Sets the color used for drawing.
@@ -658,7 +108,7 @@ class Context
 			@param b[in] Blue channel value.
 		*/
 		void			setCurrentColor(float r, float g, float b)
-		{ _currentColor = color_rgba(r, g, b); }
+		{ _currentColor = rgb<float>(r, g, b); }
 
 		/// Sets the point size used for drawing.
 		/**
@@ -1213,7 +663,7 @@ class Context
 			@param y[in] Y coordinate.
 			@param color[in] A color.
 		*/
-		void			setColorBuffer( uint32 x, uint32 y, color_rgba color )
+		void			setColorBuffer( uint32 x, uint32 y, rgb<float> color )
 		{
 			uint32 i = _w * y + x;
 			 // we may want to draw outside of viewport, so better check
@@ -1293,9 +743,9 @@ class Context
 		{ return _currentAreaMode; }
 
 		void setClearColor(float r, float g, float b)
-		{ setClearColor(color_rgba(r, g, b)); }
+		{ setClearColor(rgb<float>(r, g, b)); }
 
-		void setClearColor(color_rgba color)
+		void setClearColor(rgb<float> color)
 		{ _clearColor = color; }
 
 		void clearColor()
@@ -1311,7 +761,52 @@ class Context
 			for ( uint32 i = 0; i < size; ++i )
 				_zbuffer[i] = Z_BUFFER_INFINITY;
 		}
+
+		void setRaytracing( bool value )
+		{
+			_isRaytracing = value;
+		}
+
+		void addPrimitive( Primitive* prim )
+		{
+			prim->setMaterial( _currentMaterial );
+
+			_primitives.push_back( prim );
+		}
+
+		void setMaterial( material const& mat )
+		{
+			_currentMaterial = mat;
+		}
+
+		void addLight( PointLight* light )
+		{
+			_lights.push_back( light );
+		}
+
+		bool isRaytracing() const
+		{ return _isRaytracing; }
+
+		uint32 getVertexBufferSize() const
+		{ return _vertexBuffer.size(); }
+
+		void addTriangle()
+		{
+			// pretty ugly conversion from a vertex to a vector
+			// TODO: unify vector3 and vertex
+			Triangle* t = new Triangle(
+				vector3<float>(_vertexBuffer[0].x(), _vertexBuffer[0].y(), _vertexBuffer[0].z()),
+				vector3<float>(_vertexBuffer[1].x(), _vertexBuffer[1].y(), _vertexBuffer[1].z()),
+				vector3<float>(_vertexBuffer[2].x(), _vertexBuffer[2].y(), _vertexBuffer[2].z())
+			);		
+
+			// setting material is done inside addPrimitive(Primitive*), because it's the same for
+			// all the primitives
+
+			addPrimitive( t );
+		}
 		
+
 
 	protected:
 		void doMVPMupdate()
@@ -1330,13 +825,13 @@ class Context
 	private:
 		uint32 _w, _h;
 		
-		color_rgba*				_colorBuffer;
+		rgb<float>*				_colorBuffer;
 		float*					_zbuffer;
 
 		float					_pointSize;
 
-		color_rgba				_currentColor;
-		color_rgba				_clearColor;
+		rgb<float>				_currentColor;
+		rgb<float>				_clearColor;
 
 		std::vector<vertex>		_vertexBuffer;
 		std::vector<matrix4x4>*	_matrixStack;
@@ -1358,6 +853,12 @@ class Context
 		std::vector<edge>		_edgeBeginnings;
 		std::vector<edge>		_edgesEnds;
 		std::vector<edge>		_activeEdges;
+
+		// RayTracer
+		bool						_isRaytracing;
+		std::vector<PointLight*>	_lights;
+		std::vector<Primitive*>		_primitives;
+		material					_currentMaterial;
 
 };
 

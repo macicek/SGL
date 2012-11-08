@@ -1,5 +1,7 @@
-#ifndef EXTENSION_H
-#define EXTENSION_H
+#ifndef __SGL_EXTENSION_H__
+#define __SGL_EXTENSION_H__
+
+#include "Context.h"
 
 namespace sglext
 {

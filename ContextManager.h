@@ -1,5 +1,5 @@
-#ifndef CONTEXT_MANAGER_H
-#define CONTEXT_MANAGER_H
+#ifndef __CONTEXT_MANAGER_H__
+#define __CONTEXT_MANAGER_H__
 
 class ContextManager
 {
