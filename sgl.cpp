@@ -7,7 +7,7 @@
 //---------------------------------------------------------------------------
 
 #include "sgl.h"
-#include "Defines.h"
+#include "GeneralDefines.h"
 
 #include "Context.h"
 #include "ContextManager.h"
@@ -151,7 +151,7 @@ void sglEnd(void)
 		return;
 	}
 
-	if ( cc->isRaytracing() && cc->getDrawingMode() == SGL_POLYGON )
+	if ( cc->isDefiningScene() && cc->getDrawingMode() == SGL_POLYGON )
 	{
 		// in this case we construct a triangle
 		if ( cc->getVertexBufferSize() != 3 )
@@ -486,12 +486,12 @@ void sglDisable( sglEEnableFlags cap )
 
 void sglBeginScene()
 {
-	cm.currentContext()->setRaytracing( true );
+	cm.currentContext()->setSceneDefining( true );
 }
 
 void sglEndScene()
 {
-	cm.currentContext()->setRaytracing( false );
+	cm.currentContext()->setSceneDefining( false );
 }
 
 void sglSphere(const float x,
@@ -499,7 +499,14 @@ void sglSphere(const float x,
 			   const float z,
 			   const float radius)
 {
-	cm.currentContext()->addPrimitive( new Sphere(x, y, z, radius) );
+	Context* cc = cm.currentContext();
+	if ( !cc->isDefiningScene() )
+	{
+		setErrCode( SGL_INVALID_OPERATION );
+		return;
+	}
+
+	cc->addSphere( vector3<float>(x, y, z), radius );
 }
 
 void sglMaterial(const float r,
@@ -511,6 +518,13 @@ void sglMaterial(const float r,
 				 const float T,
 				 const float ior)
 {
+	Context* cc = cm.currentContext();
+	if ( !cc->isInCycle() )
+	{
+		setErrCode( SGL_INVALID_OPERATION );
+		return;
+	}
+
 	cm.currentContext()->setMaterial( material( rgb<float>(r, g, b), kd, ks, shine, T, ior ) );
 }
 
@@ -521,10 +535,22 @@ void sglPointLight(const float x,
 				   const float g,
 				   const float b)
 {
-	cm.currentContext()->addLight( new PointLight( vector3<float>(x, y, z), rgb<float>(r, g, b) ) );
+	Context* cc = cm.currentContext();
+	if ( !cc->isDefiningScene() )
+	{
+		setErrCode( SGL_INVALID_OPERATION );
+		return;
+	}
+
+	cc->addLight( new PointLight( vector3<float>(x, y, z), rgb<float>(r, g, b) ) );
 }
 
-void sglRayTraceScene() {}
+void sglRayTraceScene()
+{
+	Context* cc = cm.currentContext();
+
+	cc->renderScene();
+}
 
 void sglRasterizeScene() {}
 

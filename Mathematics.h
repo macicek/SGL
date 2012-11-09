@@ -1,7 +1,7 @@
 #ifndef __MATHEMATICS_H__
 #define __MATHEMATICS_H__
 
-#include "Defines.h"
+#include "GeneralDefines.h"
 
 template <typename T>
 struct vector3

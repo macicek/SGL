@@ -7,7 +7,7 @@
 class Primitive
 {
 	public:
-		virtual bool intersect( Ray const& ray, HitInfo& hitInfo ) const
+		virtual bool intersect( Ray* ray, HitInfo* hitInfo ) const
 		{ return true; }
 
 		void setMaterial(material const& m)
@@ -27,7 +27,7 @@ class Triangle : public Primitive
 			: _a(a), _b(b), _c(c)
 		{ }
 
-		bool intersect( Ray const& ray, HitInfo& hitInfo ) const
+		bool intersect( Ray* ray, HitInfo* hitInfo ) const
 		{
 			return true;
 		}
@@ -39,14 +39,14 @@ class Triangle : public Primitive
 class Sphere : public Primitive
 {
 	public:
-		Sphere( float const& x, float const& y, float const& z, float const& r )
-			: _center(vector3<float>(x, y, z)), _radius(r)
+		Sphere( vector3<float> const& center, float const& r )
+			: _center(center), _radius(r)
 		{ }
 
-		bool intersect( Ray const& ray, HitInfo& hitInfo ) const
+		bool intersect( Ray* ray, HitInfo* hitInfo ) const
 		{
-			vector3<float> rayDir = ray.getDirection();
-			vector3<float> rayOrig = ray.getOrigin();
+			vector3<float> rayDir = ray->getDirection();
+			vector3<float> rayOrig = ray->getOrigin();
 
 			// vector from ray origin to the sphere center
 			vector3<float> destination = rayOrig - _center;
@@ -63,16 +63,14 @@ class Sphere : public Primitive
 				if (distance < 0.0f)
 					distance = -b + sqrtf(d);
 
-				hitInfo.setDistance( distance );
+				hitInfo->setDistance( distance );
 
 				return true;
 			}
 
 			// there is no intersection or only one, which isn't drawn anyways
 			return false;
-		}
-
-
+		}	
 
 	private:
 		vector3<float> _center;

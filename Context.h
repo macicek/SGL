@@ -7,12 +7,12 @@
 #include <cmath>
 #include <functional>
 
-
 #include "Color.h"
 #include "Geometry.h"
+#include "RayTracerDefines.h"
+#include "PointLight.h"
 #include "Primitive.h"
 #include "RayTracer.h"
-#include "PointLight.h"
 
 enum contextMatrices
 {
@@ -64,7 +64,7 @@ class Context
 			@param width [in] Context width.
 			@param height [in] Context height.
 		*/
-		Context(uint32 width = 0, uint32 height = 0) : _w(width), _h(height)
+		Context(uint32 width = 0, uint32 height = 0) : _w(width), _h(height), _size(width*height)
 		{ 
 			_matrixStack		= new std::vector<matrix4x4>;
 			_colorBuffer		= new rgb<float>[width * height];
@@ -72,6 +72,8 @@ class Context
 			initZBuffer();
 			
 			_updateMVPMneeded	= false;
+
+			_rayTracer			= NULL; // is created when needed
 		} 		
 
 		/// Context destructor.
@@ -665,10 +667,7 @@ class Context
 		*/
 		void			setColorBuffer( uint32 x, uint32 y, rgb<float> color )
 		{
-			uint32 i = _w * y + x;
-			 // we may want to draw outside of viewport, so better check
-			if ( i > _w * _h )
-				return;
+			uint32 i = _w * y + x;		
 
 			_colorBuffer[i] = color;
 		}
@@ -749,43 +748,37 @@ class Context
 		{ _clearColor = color; }
 
 		void clearColor()
-		{
-			uint32 size = _w * _h;
-			for ( uint32 i = 0; i < size; ++i )
+		{			
+			for ( uint32 i = 0; i < _size; ++i )
 				_colorBuffer[i] = _clearColor;
 		}
 
 		void clearZBuffer()
-		{
-			uint32 size = _w * _h;
-			for ( uint32 i = 0; i < size; ++i )
+		{			
+			for ( uint32 i = 0; i < _size; ++i )
 				_zbuffer[i] = Z_BUFFER_INFINITY;
 		}
 
-		void setRaytracing( bool value )
+		void setSceneDefining( bool value )
 		{
-			_isRaytracing = value;
-		}
+			if ( !_rayTracer )			
+				_rayTracer = new RayTracer();			
 
-		void addPrimitive( Primitive* prim )
-		{
-			prim->setMaterial( _currentMaterial );
-
-			_primitives.push_back( prim );
-		}
+			_isDefiningScene = value;
+		}		
 
 		void setMaterial( material const& mat )
 		{
-			_currentMaterial = mat;
+			_rayTracer->setCurrentMaterial( mat );
 		}
 
 		void addLight( PointLight* light )
 		{
-			_lights.push_back( light );
+			_rayTracer->addLight( light );
 		}
 
-		bool isRaytracing() const
-		{ return _isRaytracing; }
+		bool isDefiningScene() const
+		{ return _isDefiningScene; }
 
 		uint32 getVertexBufferSize() const
 		{ return _vertexBuffer.size(); }
@@ -794,18 +787,33 @@ class Context
 		{
 			// pretty ugly conversion from a vertex to a vector
 			// TODO: unify vector3 and vertex
-			Triangle* t = new Triangle(
-				vector3<float>(_vertexBuffer[0].x(), _vertexBuffer[0].y(), _vertexBuffer[0].z()),
-				vector3<float>(_vertexBuffer[1].x(), _vertexBuffer[1].y(), _vertexBuffer[1].z()),
-				vector3<float>(_vertexBuffer[2].x(), _vertexBuffer[2].y(), _vertexBuffer[2].z())
-			);		
+						
+			_rayTracer->addTriangle( new Triangle(
+					vector3<float>(_vertexBuffer[0].x(), _vertexBuffer[0].y(), _vertexBuffer[0].z()),
+					vector3<float>(_vertexBuffer[1].x(), _vertexBuffer[1].y(), _vertexBuffer[1].z()),
+					vector3<float>(_vertexBuffer[2].x(), _vertexBuffer[2].y(), _vertexBuffer[2].z()) )
+				);
+		}	
 
-			// setting material is done inside addPrimitive(Primitive*), because it's the same for
+		void addSphere( vector3<float> const& center, float const& radius )
+		{
+			// setting material is done inside RayTracer::addPrimitive(Primitive*), because it's the same for
 			// all the primitives
 
-			addPrimitive( t );
+			_rayTracer->addSphere( new Sphere( center, radius ) );
 		}
-		
+
+		void renderScene()
+		{
+			for ( uint32 y = 0; y < _h; ++y )
+			{
+				for ( uint32 x = 0; x < _w; ++x )
+				{
+					setCurrentColor( _rayTracer->castRay(x, y) );
+					setPixel( x, y );
+				}
+			}
+		}
 
 
 	protected:
@@ -824,6 +832,7 @@ class Context
 
 	private:
 		uint32 _w, _h;
+		uint32 _size;
 		
 		rgb<float>*				_colorBuffer;
 		float*					_zbuffer;
@@ -855,11 +864,8 @@ class Context
 		std::vector<edge>		_activeEdges;
 
 		// RayTracer
-		bool						_isRaytracing;
-		std::vector<PointLight*>	_lights;
-		std::vector<Primitive*>		_primitives;
-		material					_currentMaterial;
-
+		bool						_isDefiningScene;
+		RayTracer*					_rayTracer;
 };
 
 #endif

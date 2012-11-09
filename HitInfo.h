@@ -1,42 +1,38 @@
-#ifndef __HIT_INFO_H
-#define __HIT_INFO_H
+#ifndef __HIT_INFO_H__
+#define __HIT_INFO_H__
 
-#include "RayTracer.h"
+#include "RayTracerDefines.h"
 #include "Mathematics.h"
 
 class Primitive;
 class HitInfo
 {
 	public:
+		HitInfo()
+		{ }
+
 		void setPrimitive( Primitive* primitive )
 		{ _hitPrimitive = primitive; }
-
-		void setMaterial( material const& material )
-		{ _material = material; }
 
 		void setDistance( float const& distance )
 		{ _distance = distance; }
 
-		void setNormal( vector3<float> const& normal )
-		{ _normal = normal; }
-
 		Primitive* getHitPrimitive() const
 		{ return _hitPrimitive; }
-
-		material getMaterial() const
-		{ return _material; }
 
 		float getDistance() const
 		{ return _distance; }
 
-		vector3<float> getNormal() const
-		{ return _normal; }
+		float getEpsilon() const
+		{ return _epsilon; }
+
+		void setEpsilon( float const& epsilon )
+		{ _epsilon = epsilon; }
 
 	private:
-		Primitive*		_hitPrimitive;
-		material		_material;
+		Primitive*		_hitPrimitive;		
 		float			_distance;
-		vector3<float>	_normal;
+		float			_epsilon;		
 };
 
 #endif
