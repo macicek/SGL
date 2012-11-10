@@ -54,6 +54,9 @@ inline vector3<float> operator* ( float const& n, vector3<float> const& v )
 inline vector3<float> operator- ( vector3<float> const& v1, vector3<float> const& v2 )
 { return vector3<float>( v1.x() - v2.x(), v1.y() - v2.y(), v1.z() - v2.z() ); }
 
+inline vector3<float> operator+ ( vector3<float> const& v1, vector3<float> const& v2 )
+{ return vector3<float>( v1.x() + v2.x(), v1.y() + v2.y(), v1.z() + v2.z() ); }
+
 struct matrix4x4
 {
 	public:

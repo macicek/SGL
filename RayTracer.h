@@ -60,11 +60,22 @@ class RayTracer
 			@return		Ray
 		*/
 		Ray* generateRay( uint32 x, uint32 y )
-		{			
-			vector3<float> direction = _inverse * vector3<float>( static_cast<float>( x ), static_cast<float>( y ), -1.0f );			
-			direction.normalize();			
+		{				
+					
 
-			return new Ray( vector3<float>( 0.0f, 0.0f, 0.0f ), direction );
+			vector3<float>vecX(static_cast<float>(x) / static_cast<float>(_viewport.width()), 0.0f, 0.0f);
+			vector3<float>vecY(0.0f, static_cast<float>(y) / static_cast<float>(_viewport.height()), 0.0f);
+			
+			vector3<float>camera(0.0f, 0.0f, 0.0f);
+			vector3<float>origin(0.0f, 0.0f, -0.5f);				
+
+			vector3<float>dir = vecX + vecY + camera - origin;						
+			dir.normalize();
+
+			// std::cout << "normalized [" << dir.x() << ", " << dir.y() << ", " << dir.z() << "]" << std::endl;
+			
+			return new Ray( origin, 
+							dir );
 		}
 
 		/// Intersection of the scene and a ray
@@ -100,14 +111,22 @@ class RayTracer
 
 		void setInverseMatrix( matrix4x4 const& matrix )
 		{
-			_inverse = matrix;
+			_inverseMVP = matrix;
+		}
+
+		void setViewportMatrix( viewport viewport, matrix4x4 const& matrix )
+		{
+			_viewportM = matrix;
+			_viewport = viewport;
 		}
 
 	private:
 		std::vector<PointLight*>	_lights;
 		std::vector<Primitive*>		_primitives;
 
-		matrix4x4					_inverse;
+		matrix4x4					_inverseMVP;
+		matrix4x4					_viewportM;
+		viewport					_viewport;
 
 		material					_currentMaterial;
 };

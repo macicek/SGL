@@ -24,4 +24,38 @@ const float ARC_SEGMENTS_F		= 40.0f;
 
 const float Z_BUFFER_INFINITY	= std::numeric_limits<float>::max();
 
+enum contextMatrices
+{
+	M_MVP,
+	M_MODELVIEW,
+	M_PROJECTION,
+	M_VIEWPORT,
+
+	M_SIZE
+};
+
+struct viewport
+{
+	public:
+		viewport(){ };
+		viewport(uint32 width, uint32 height, uint32 offsetX, uint32 offsetY) : 
+			_width(width),
+			_height(height),
+			_offsetX(offsetX),
+			_offsetY(offsetY)
+		{};
+
+		uint32 width() const { return _width; }
+		uint32 height() const { return _height; }
+		uint32 offsetX() const { return _offsetX; }
+		uint32 offsetY() const { return _offsetY; }
+	
+	private:
+		uint32	_width,
+				_height;
+		
+		uint32	_offsetX,
+				_offsetY;
+};
+
 #endif

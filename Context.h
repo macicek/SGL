@@ -14,40 +14,6 @@
 #include "Primitive.h"
 #include "RayTracer.h"
 
-enum contextMatrices
-{
-	M_MVP,
-	M_MODELVIEW,
-	M_PROJECTION,
-	M_VIEWPORT,
-
-	M_SIZE
-};
-
-struct viewport
-{
-	public:
-		viewport(){ };
-		viewport(uint32 width, uint32 height, uint32 offsetX, uint32 offsetY) : 
-			_width(width),
-			_height(height),
-			_offsetX(offsetX),
-			_offsetY(offsetY)
-		{};
-
-		uint32 width() const { return _width; }
-		uint32 height() const { return _height; }
-		uint32 offsetX() const { return _offsetX; }
-		uint32 offsetY() const { return _offsetY; }
-	
-	private:
-		uint32	_width,
-				_height;
-		
-		uint32	_offsetX,
-				_offsetY;
-};
-
 /// A context class.
 /**
 	A context class represents a single scene or a context. Multiple contexts can be held in memory at the
@@ -806,7 +772,9 @@ class Context
 		void renderScene()
 		{
 			doMVPMupdate();
+
 			_rayTracer->setInverseMatrix( _matrix[M_MVP].inverse() );
+			_rayTracer->setViewportMatrix( _viewport, _matrix[M_VIEWPORT] );
 
 			for ( uint32 y = 0; y < _h; ++y )
 			{
