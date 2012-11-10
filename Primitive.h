@@ -8,7 +8,7 @@ class Primitive
 {
 	public:
 		virtual bool intersect( Ray* ray, HitInfo* hitInfo ) const
-		{ return true; }
+		{ return false; }
 
 		void setMaterial(material const& m)
 		{ _material = m; }
@@ -29,7 +29,7 @@ class Triangle : public Primitive
 
 		bool intersect( Ray* ray, HitInfo* hitInfo ) const
 		{
-			return true;
+			return false;
 		}
 
 	private:
@@ -44,31 +44,21 @@ class Sphere : public Primitive
 		{ }
 
 		bool intersect( Ray* ray, HitInfo* hitInfo ) const
-		{
-			vector3<float> rayDir = ray->getDirection();
-			vector3<float> rayOrig = ray->getOrigin();
-
-			// vector from ray origin to the sphere center
-			vector3<float> destination = rayOrig - _center;
-
-			// root computation of a quadratic equation
-			const float b = vec3::scalarProduct(destination, rayDir);
-			const float c = vec3::scalarProduct(destination, destination) - _radius * _radius;
+		{			
+			const vector3<float> dst = ray->getOrigin() - _center;
+			const float b = vec3::scalarProduct(dst, ray->getDirection());
+			const float c = vec3::scalarProduct(dst, dst) - _radius*_radius;
 			const float d = b*b - c;
+	
+			if(d > 0)
+			{			 
+				float t = -b - sqrtf(d);
+				if (t < 0.0f)
+					t = -b + sqrtf(d);
 
-			// there is an intersection
-			if (d > 0.0f)
-			{				
-				float distance = -b - sqrtf(d);
-				if (distance < 0.0f)
-					distance = -b + sqrtf(d);
-
-				hitInfo->setDistance( distance );
-
+				hitInfo->setDistance( t );
 				return true;
 			}
-
-			// there is no intersection or only one, which isn't drawn anyways
 			return false;
 		}	
 

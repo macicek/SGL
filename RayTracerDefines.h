@@ -1,6 +1,12 @@
 #ifndef __RAY_TRACER_DEFINES_H__
 #define __RAY_TRACER_DEFINES_H__
 
+const rgb<float> WHITE( 1.0f, 1.0f, 1.0f );
+const rgb<float> BLACK( 0.0f, 0.0f, 0.0f );
+const rgb<float> RED( 1.0f, 0.0f, 0.0f );
+const rgb<float> GREEN( 0.0f, 1.0f, 0.0f );
+const rgb<float> BLUE( 0.0f, 0.0f, 1.0f );
+
 struct material
 {
 	public:

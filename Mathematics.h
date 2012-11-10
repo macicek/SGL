@@ -7,6 +7,8 @@ template <typename T>
 struct vector3
 {
 	public:
+		vector3()
+		{}
 		vector3(T const& x, T const& y, T const& z)
 			: _x(x), _y(y), _z(z)
 		{}
@@ -14,12 +16,30 @@ struct vector3
 		T x() const { return _x; }
 		T y() const { return _y; }
 		T z() const { return _z; }
+
+		void setX( T val ){ _x = val; }
+		void setY( T val ){ _y = val; }
+		void setZ( T val ){ _z = val; }
 		
 		vector3 operator- ( vector3<T> const& v )
 		{ return vector3<T>( _x - v.x(), _y - v.y(), _z - v.z() ); }
 
 		T length() const
-		{ return sqrt( pow(_x, 2) + pow(_y, 2) + pow(_z, 2) ); }
+		{ return sqrt( _x*_x + _y*_y + _z*_z ); }
+
+		vector3& normalize()
+		{
+			T size = sqrt( _x*_x + _y*_y + _z*_z );
+
+			if (size == 0 || size == 1)
+				return *this;
+
+			_x /= size;
+			_y /= size;
+			_z /= size;
+
+			return *this;
+		}
 
 	private:
 		T _x, _y, _z;
@@ -30,6 +50,9 @@ inline vector3<float> operator* ( vector3<float> const& v, float const& n )
 
 inline vector3<float> operator* ( float const& n, vector3<float> const& v )
 { return v * n; }
+
+inline vector3<float> operator- ( vector3<float> const& v1, vector3<float> const& v2 )
+{ return vector3<float>( v1.x() - v2.x(), v1.y() - v2.y(), v1.z() - v2.z() ); }
 
 struct matrix4x4
 {
@@ -346,11 +369,169 @@ struct matrix4x4
 			result[15]	= a[12] * b[3]		+ a[13] * b[7]		+ a[14] * b[11]		+ a[15] * b[15];
 	
 			return result;	
+		}		
+
+		/**
+			Returns a const copy of the inverted matrix. Used when we don't want to modify
+			the initial matrix.
+		*/
+		matrix4x4 inverse() const
+		{
+			matrix4x4 inv;
+
+			inv[0] =	_container[5]  * _container[10] * _container[15] - 
+						_container[5]  * _container[11] * _container[14] - 
+						_container[9]  * _container[6]  * _container[15] + 
+						_container[9]  * _container[7]  * _container[14] +
+						_container[13] * _container[6]  * _container[11] - 
+						_container[13] * _container[7]  * _container[10];
+
+			inv[4] =	-_container[4]  * _container[10] * _container[15] + 
+						_container[4]  * _container[11] * _container[14] + 
+						_container[8]  * _container[6]  * _container[15] - 
+						_container[8]  * _container[7]  * _container[14] - 
+						_container[12] * _container[6]  * _container[11] + 
+						_container[12] * _container[7]  * _container[10];
+
+			inv[8] =	_container[4]  * _container[9] * _container[15] - 
+						_container[4]  * _container[11] * _container[13] - 
+						_container[8]  * _container[5] * _container[15] + 
+						_container[8]  * _container[7] * _container[13] + 
+						_container[12] * _container[5] * _container[11] - 
+						_container[12] * _container[7] * _container[9];
+
+			inv[12] =	-_container[4]  * _container[9] * _container[14] + 
+						_container[4]  * _container[10] * _container[13] +
+						_container[8]  * _container[5] * _container[14] - 
+						_container[8]  * _container[6] * _container[13] - 
+						_container[12] * _container[5] * _container[10] + 
+						_container[12] * _container[6] * _container[9];
+
+			inv[1] =	-_container[1]  * _container[10] * _container[15] + 
+						_container[1]  * _container[11] * _container[14] + 
+						_container[9]  * _container[2] * _container[15] - 
+						_container[9]  * _container[3] * _container[14] - 
+						_container[13] * _container[2] * _container[11] + 
+						_container[13] * _container[3] * _container[10];
+
+			inv[5] =	_container[0]  * _container[10] * _container[15] - 
+						_container[0]  * _container[11] * _container[14] - 
+						_container[8]  * _container[2] * _container[15] + 
+						_container[8]  * _container[3] * _container[14] + 
+						_container[12] * _container[2] * _container[11] - 
+						_container[12] * _container[3] * _container[10];
+
+			inv[9] =	-_container[0]  * _container[9] * _container[15] + 
+						_container[0]  * _container[11] * _container[13] + 
+						_container[8]  * _container[1] * _container[15] - 
+						_container[8]  * _container[3] * _container[13] - 
+						_container[12] * _container[1] * _container[11] + 
+						_container[12] * _container[3] * _container[9];
+
+			inv[13] =	_container[0]  * _container[9] * _container[14] - 
+						_container[0]  * _container[10] * _container[13] - 
+						_container[8]  * _container[1] * _container[14] + 
+						_container[8]  * _container[2] * _container[13] + 
+						_container[12] * _container[1] * _container[10] - 
+						_container[12] * _container[2] * _container[9];
+
+			inv[2] =	_container[1]  * _container[6] * _container[15] - 
+						_container[1]  * _container[7] * _container[14] - 
+						_container[5]  * _container[2] * _container[15] + 
+						_container[5]  * _container[3] * _container[14] + 
+						_container[13] * _container[2] * _container[7] - 
+						_container[13] * _container[3] * _container[6];
+
+			inv[6] =	-_container[0]  * _container[6] * _container[15] + 
+						_container[0]  * _container[7] * _container[14] + 
+						_container[4]  * _container[2] * _container[15] - 
+						_container[4]  * _container[3] * _container[14] - 
+						_container[12] * _container[2] * _container[7] + 
+						_container[12] * _container[3] * _container[6];
+
+			inv[10] =	_container[0]  * _container[5] * _container[15] - 
+						_container[0]  * _container[7] * _container[13] - 
+						_container[4]  * _container[1] * _container[15] + 
+						_container[4]  * _container[3] * _container[13] + 
+						_container[12] * _container[1] * _container[7] - 
+						_container[12] * _container[3] * _container[5];
+
+			inv[14] =	-_container[0]  * _container[5] * _container[14] + 
+						_container[0]  * _container[6] * _container[13] + 
+						_container[4]  * _container[1] * _container[14] - 
+						_container[4]  * _container[2] * _container[13] - 
+						_container[12] * _container[1] * _container[6] + 
+						_container[12] * _container[2] * _container[5];
+
+			inv[3] =	-_container[1] * _container[6] * _container[11] + 
+						_container[1] * _container[7] * _container[10] + 
+						_container[5] * _container[2] * _container[11] - 
+						_container[5] * _container[3] * _container[10] - 
+						_container[9] * _container[2] * _container[7] + 
+						_container[9] * _container[3] * _container[6];
+
+			inv[7] =	_container[0] * _container[6] * _container[11] - 
+						_container[0] * _container[7] * _container[10] - 
+						_container[4] * _container[2] * _container[11] + 
+						_container[4] * _container[3] * _container[10] + 
+						_container[8] * _container[2] * _container[7] - 
+						_container[8] * _container[3] * _container[6];
+
+			inv[11] =	-_container[0] * _container[5] * _container[11] + 
+						_container[0] * _container[7] * _container[9] + 
+						_container[4] * _container[1] * _container[11] - 
+						_container[4] * _container[3] * _container[9] - 
+						_container[8] * _container[1] * _container[7] + 
+						_container[8] * _container[3] * _container[5];
+
+			inv[15] =	_container[0] * _container[5] * _container[10] - 
+						_container[0] * _container[6] * _container[9] - 
+						_container[4] * _container[1] * _container[10] + 
+						_container[4] * _container[2] * _container[9] + 
+						_container[8] * _container[1] * _container[6] - 
+						_container[8] * _container[2] * _container[5];
+
+			float det = _container[0] * inv[0] + _container[1] * inv[4] + _container[2] * inv[8] + _container[3] * inv[12];
+
+			if ( !det )
+				return *this;
+
+			det = 1.0f / det;
+
+			for ( int i = 0; i < 16; ++i )
+				inv[i] = inv[i] * det;
+    
+			return inv;
+		}
+
+		/**
+			Creates an inverted matrix and assings it to the original. Used when we
+			want to modify the initial matrix. Has a little overhead, but nothing that
+			really matters that much.
+		*/
+		matrix4x4& invert()
+		{
+			matrix4x4 inv = (*this).inverse();
+
+			*this = inv;
+
+			return *this;
 		}
 
 	private:
 		float _container[16];
 };
+
+inline vector3<float> operator* ( matrix4x4 const& matrix, vector3<float> const& vec )
+{
+	vector3<float> res;	
+
+	res.setX( vec.x() * matrix[0] + vec.y() * matrix[1] + vec.z() * matrix[2] );
+	res.setY( vec.x() * matrix[4] + vec.y() * matrix[5] + vec.z() * matrix[6] );
+	res.setZ( vec.x() * matrix[8] + vec.y() * matrix[9] + vec.z() * matrix[10] );
+
+	return res;
+}
 
 namespace vec3
 {

@@ -805,13 +805,13 @@ class Context
 
 		void renderScene()
 		{
+			doMVPMupdate();
+			_rayTracer->setInverseMatrix( _matrix[M_MVP].inverse() );
+
 			for ( uint32 y = 0; y < _h; ++y )
 			{
-				for ( uint32 x = 0; x < _w; ++x )
-				{
-					setCurrentColor( _rayTracer->castRay(x, y) );
-					setPixel( x, y );
-				}
+				for ( uint32 x = 0; x < _w; ++x )				
+					setColorBuffer( x, y, _rayTracer->castRay(x, y) );				
 			}
 		}
 
