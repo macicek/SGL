@@ -77,6 +77,11 @@ struct vertex
 			return *this;
 		}
 
+		vector3<float> toVector3()
+		{
+			return vector3<float>(_x, _y, _z);
+		}
+
 	private:
 		float _x, _y, _z, _w;
 };

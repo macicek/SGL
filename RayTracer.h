@@ -63,19 +63,23 @@ class RayTracer
 		{				
 					
 
-			vector3<float>vecX(static_cast<float>(x) / static_cast<float>(_viewport.width()), 0.0f, 0.0f);
-			vector3<float>vecY(0.0f, static_cast<float>(y) / static_cast<float>(_viewport.height()), 0.0f);
-			
-			vector3<float>camera(0.0f, 0.0f, 0.0f);
-			vector3<float>origin(0.0f, 0.0f, -0.5f);				
+		
+				// vypocti souradnice v NDC
+				float xn = 2.0f * static_cast<float>(x) / static_cast<float>(_viewport.width()) - 1.0f;
+				float yn = 2.0f * static_cast<float>(y) / static_cast<float>(_viewport.height()) - 1.0f;
 
-			vector3<float>dir = vecX + vecY + camera - origin;						
-			dir.normalize();
+				vertex origin(xn, yn, -1.0f);
+				origin *= _inverseMVP;
+				origin.wNormalize();
+				vector3<float> orig = origin.toVector3();
 
-			// std::cout << "normalized [" << dir.x() << ", " << dir.y() << ", " << dir.z() << "]" << std::endl;
-			
-			return new Ray( origin, 
-							dir );
+				vertex direction(xn, yn, 1.0f);
+				direction *= _inverseMVP;
+				direction.wNormalize();
+				vector3<float> dir = direction.toVector3();
+
+				return new Ray(orig, dir.normalize() );
+
 		}
 
 		/// Intersection of the scene and a ray
