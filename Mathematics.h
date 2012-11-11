@@ -543,12 +543,27 @@ namespace vec3
 	{
 		return v1.x() * v2.x() + v1.y() * v2.y() + v1.z() * v2.z();
 	}
+
+	template <typename T>
+	inline vector3<T> crossProduct(vector3<T> const& v1, vector3<T> const& v2)
+	{
+		return vector3<T>
+			(	
+				v1.y() * v2.z() - v1.z() * v1.y(),
+				v1.z() * v2.x() - v1.x() * v2.z(),
+				v1.x() * v2.y() - v1.y() * v2.x()
+			);
+	}
 }
 
-namespace sglmath
+namespace math
 {
 	inline int32 round(float num)
 	{ return static_cast<int32>(num + 0.5f); }
+
+	template <typename T>
+	inline void invert( T& num )
+	{ num = 1 / num; }
 }
 
 #endif

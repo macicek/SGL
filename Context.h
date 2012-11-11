@@ -327,7 +327,7 @@ class Context
 				edge e(tmp, *it);
 				
 				_edgeBeginnings.push_back(e);				
-				maxY = std::max( maxY, sglmath::round(e.end()) );
+				maxY = std::max( maxY, math::round(e.end()) );
 			}			
 			edge e(_vertexBuffer.back(), _vertexBuffer.front());
 			_edgeBeginnings.push_back(e);
@@ -336,7 +336,7 @@ class Context
 			// shuffle sort is used later on, when the edges are already sorted
 			std::sort( _edgeBeginnings.begin(), _edgeBeginnings.end(), edge::startFunctor() );		
 
-			uint32 i, minY = sglmath::round( _edgeBeginnings.front().start() );
+			uint32 i, minY = math::round( _edgeBeginnings.front().start() );
 
 			std::vector<edge>::iterator it;					
 			vertex tmp;
@@ -344,7 +344,7 @@ class Context
 			{								
 				// edge activation
 				it = _edgeBeginnings.begin();
-				while (!_edgeBeginnings.empty() && sglmath::round(it->start()) == y)
+				while (!_edgeBeginnings.empty() && math::round(it->start()) == y)
 				{
 					_activeEdges.push_back(*it);
 					_edgeBeginnings.erase(it);
@@ -354,7 +354,7 @@ class Context
 				int32 roundedEdgeEnd;
 				for (i = 0; i < _activeEdges.size(); ++i)
 				{
-					roundedEdgeEnd = sglmath::round(_activeEdges[i].end());
+					roundedEdgeEnd = math::round(_activeEdges[i].end());
 					if (roundedEdgeEnd == y)
 					{
 						_activeEdges.erase(_activeEdges.begin()+i);
@@ -374,13 +374,13 @@ class Context
 
 				for (it = _activeEdges.begin(); it != _activeEdges.end(); ++it)
 				{	
-					if ( sglmath::round( it->end() ) == y )
+					if ( math::round( it->end() ) == y )
 						continue;
 
 					tmp = it->toVertex();					
 					do					
 						++it;
-					while (it != _activeEdges.end() && sglmath::round( it->end() ) == y);
+					while (it != _activeEdges.end() && math::round( it->end() ) == y);
 						
 					if ( it == _activeEdges.end() )
 						break;

@@ -28,8 +28,32 @@ class Triangle : public Primitive
 		{ }
 
 		bool intersect( Ray* ray, HitInfo* hitInfo ) const
-		{
-			return false;
+		{									
+			vector3<float> e1 = _b - _a;
+			vector3<float> e2 = _c - _a;
+			vector3<float> s1 = vec3::crossProduct(ray->getDirection(), e2);
+
+			float divisor = vec3::scalarProduct(s1, e1);
+			if (divisor == 0.0f)
+				return false;			
+			// Compute first barycentric coordinate
+			vector3<float> d = ray->getOrigin() - _a;
+			math::invert(divisor);
+
+			float b1 = vec3::scalarProduct(d, s1) * divisor;
+			if (b1 < 0.0f || b1 > 1.0f)
+				return false;
+
+			// Compute second barycentric coordinate
+			vector3<float> s2 = vec3::crossProduct(d, e1);
+			float b2 = vec3::scalarProduct(ray->getDirection(), s2) * divisor;
+			if (b2 < 0.0f || b1 + b2 > 1.0f)
+				return false;
+
+			// Compute _t_ to intersection point
+			float t = vec3::scalarProduct(e2, s2) * divisor;
+			hitInfo->setDistance( t );
+			return true;
 		}
 
 	private:
