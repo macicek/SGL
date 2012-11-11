@@ -20,6 +20,29 @@ struct rgb
 		T green() const { return _g; }
 		T blue() const { return _b; }
 
+		rgb<T>& operator* ( rgb<T> const& color )
+		{
+			_r *= color.red(); _g *= color.green();	_b *= color.blue();
+			return *this;
+		}
+
+		rgb<T>& operator* ( float const& coef )
+		{ 
+			_r *= coef; _g *= coef; _b *= coef;
+			return *this;
+		}
+
+		rgb<T> operator+ ( rgb<T> const& color )
+		{			
+			return rgb<T>(_r + color.red(), _g + color.green(), _b + color.blue());
+		}
+
+		rgb<T>& operator+= ( rgb<T> const& color )
+		{
+			_r += color.red(); _g += color.green(); _b += color.blue();
+			return *this;
+		}
+
 	private:
 		T _r, _g, _b;
 };

@@ -100,17 +100,48 @@ class RayTracer
 				// and see what happens
 				if ( (*it)->intersect( ray, hitInfo ) )
 				{
-					// we hit a primitive								
-					return phong( ray, hitInfo );
+					// we hit a primitive	
+					hitInfo->setPrimitive( *it );
+					return shade( ray, hitInfo );
 				}
 			}
-			return BLACK;
+			return WHITE; // background color
 		}
 
-		const rgb<float> phong( Ray* ray, HitInfo *hitInfo )
+		const rgb<float> shade( Ray* ray, HitInfo *hitInfo )
 		{
-			// TODO
-			return WHITE;
+			// rgb is an additive color mode, therefore we start with #000000 (black) and add partial colors
+			rgb<float> color( 0.0f, 0.0f, 0.0f ); // BLACK			
+			vector3<float> hit = ray->getOrigin() + ( ray->getDirection() * hitInfo->getDistance() ); // place where we hit the primitive
+			material mat = hitInfo->getHitPrimitive()->getMaterial(); // material used to calculate things such as color, reflective properties			
+
+			// add contribution of every light source
+			for (std::vector<PointLight*>::iterator it = _lights.begin(); it != _lights.end(); ++it)
+			{
+				PointLight* light = *it;
+				//std::cout << "light-color: ("<< light->getColor().red() << "," << light->getColor().green() << "," << light->getColor().blue() << ")" << std::endl;
+				//std::cout << "material-color: ("<< mat.color().red() << "," << mat.color().green() << "," << mat.color().blue() << ")" << std::endl;
+				vector3<float> shadowRayDir = light->getPosition() - hit;
+				shadowRayDir.normalize();								
+
+				float intensity = vec3::scalarProduct(hitInfo->getNormal(), shadowRayDir);
+				intensity = std::max( intensity, 0.0f );
+
+				color += mat.color() * mat.diffuse() * intensity * light->getColor();
+
+				vector3<float> R = shadowRayDir - 2 * vec3::scalarProduct(shadowRayDir, hitInfo->getNormal()) * hitInfo->getNormal();
+				intensity = vec3::scalarProduct(R, ray->getDirection() );
+				intensity = std::max( intensity, 0.0f );
+				intensity = powf( intensity, mat.shine() );
+				intensity = std::min( 10000.0f, intensity );
+
+				color += rgb<float>(mat.specular(), mat.specular(), mat.specular()) * intensity * light->getColor();
+
+			}	
+			//std::cout << "(" << color.red() << "," << color.green() << "," << color.blue() << ")" << std::endl;
+
+
+			return color;
 		}
 
 		void setInverseMatrix( matrix4x4 const& matrix )

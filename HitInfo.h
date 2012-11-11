@@ -29,10 +29,17 @@ class HitInfo
 		void setEpsilon( float const& epsilon )
 		{ _epsilon = epsilon; }
 
+		void setNormal( vector3<float> const& normal )
+		{ _normal = normal; }
+
+		vector3<float> getNormal() const
+		{ return _normal; }
+
 	private:
 		Primitive*		_hitPrimitive;		
 		float			_distance;
-		float			_epsilon;		
+		float			_epsilon;	
+		vector3<float>	_normal;
 };
 
 #endif

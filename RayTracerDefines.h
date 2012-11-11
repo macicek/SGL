@@ -21,6 +21,13 @@ struct material
 			: _color( rgb<float>(red, green, blue) ), _diffuse(diffuse), _specular(specular), _shine(shine), _transmittence(transmittence), _refraction(refraction)
 		{} 
 
+		rgb<float>	color() const { return _color; }
+		float		diffuse() const { return _diffuse; }
+		float		specular() const { return _specular; }
+		float		shine() const { return _shine; }
+		float		transmittence() const { return _transmittence; }
+		float		refraction() const { return _refraction; }
+
 	private:
 		rgb<float>	_color;
 		float		_diffuse;

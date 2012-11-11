@@ -80,7 +80,8 @@ class Sphere : public Primitive
 				if (t < 0.0f)
 					t = -b + sqrtf(d);
 
-				hitInfo->setDistance( t );
+				hitInfo->setDistance( t );					
+				hitInfo->setNormal(( ray->getOrigin() + (ray->getDirection() * t) - _center) * _radius );
 				return true;
 			}
 			return false;
