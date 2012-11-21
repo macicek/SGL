@@ -1,35 +1,35 @@
-#ifndef __MATHEMATICS_H__
-#define __MATHEMATICS_H__
+#ifndef __MAfloatHEMAfloatICS_H__
+#define __MAfloatHEMAfloatICS_H__
 
+#include <limits>
 #include "GeneralDefines.h"
 
-template <typename T>
 struct vector3
 {
 	public:
 		vector3()
 		{}
-		vector3(T const& x, T const& y, T const& z)
+		vector3(float const& x, float const& y, float const& z)
 			: _x(x), _y(y), _z(z)
 		{}
 
-		T x() const { return _x; }
-		T y() const { return _y; }
-		T z() const { return _z; }
+		float x() const { return _x; }
+		float y() const { return _y; }
+		float z() const { return _z; }
 
-		void setX( T val ){ _x = val; }
-		void setY( T val ){ _y = val; }
-		void setZ( T val ){ _z = val; }
+		void setX( float val ){ _x = val; }
+		void setY( float val ){ _y = val; }
+		void setZ( float val ){ _z = val; }
 		
-		vector3 operator- ( vector3<T> const& v )
-		{ return vector3<T>( _x - v.x(), _y - v.y(), _z - v.z() ); }
+		vector3 operator- ( vector3 const& v )
+		{ return vector3( _x - v.x(), _y - v.y(), _z - v.z() ); }
 
-		T length() const
+		float length() const
 		{ return sqrt( _x*_x + _y*_y + _z*_z ); }
 
 		vector3& normalize()
 		{
-			T size = sqrt( _x*_x + _y*_y + _z*_z );
+			float size = sqrt( _x*_x + _y*_y + _z*_z );
 
 			if (size == 0 || size == 1)
 				return *this;
@@ -41,21 +41,35 @@ struct vector3
 			return *this;
 		}
 
+		bool isNull()
+		{
+			return (_x == 0 && _y == 0 && _z == 0);
+		}
+
+		void print() const
+		{
+			//std::cout << "(" << _x << "," << _y << "," << _z << ")";
+		}
+
 	private:
-		T _x, _y, _z;
+		float _x, _y, _z;
 };
 
-inline vector3<float> operator* ( vector3<float> const& v, float const& n )
-{ return vector3<float>(n * v.x(), n * v.y(), n * v.z()); }
 
-inline vector3<float> operator* ( float const& n, vector3<float> const& v )
+inline vector3 operator* ( vector3 const& v, float const& n )
+{ return vector3(n * v.x(), n * v.y(), n * v.z()); }
+
+
+inline vector3 operator* ( float const& n, vector3 const& v )
 { return v * n; }
 
-inline vector3<float> operator- ( vector3<float> const& v1, vector3<float> const& v2 )
-{ return vector3<float>( v1.x() - v2.x(), v1.y() - v2.y(), v1.z() - v2.z() ); }
 
-inline vector3<float> operator+ ( vector3<float> const& v1, vector3<float> const& v2 )
-{ return vector3<float>( v1.x() + v2.x(), v1.y() + v2.y(), v1.z() + v2.z() ); }
+inline vector3 operator- ( vector3 const& v1, vector3 const& v2 )
+{ return vector3( v1.x() - v2.x(), v1.y() - v2.y(), v1.z() - v2.z() ); }
+
+
+inline vector3 operator+ ( vector3 const& v1, vector3 const& v2 )
+{ return vector3( v1.x() + v2.x(), v1.y() + v2.y(), v1.z() + v2.z() ); }
 
 struct matrix4x4
 {
@@ -525,9 +539,9 @@ struct matrix4x4
 		float _container[16];
 };
 
-inline vector3<float> operator* ( matrix4x4 const& matrix, vector3<float> const& vec )
+inline vector3 operator* ( matrix4x4 const& matrix, vector3 const& vec )
 {
-	vector3<float> res;	
+	vector3 res;	
 
 	res.setX( vec.x() * matrix[0] + vec.y() * matrix[1] + vec.z() * matrix[2] );
 	res.setY( vec.x() * matrix[4] + vec.y() * matrix[5] + vec.z() * matrix[6] );
@@ -538,16 +552,16 @@ inline vector3<float> operator* ( matrix4x4 const& matrix, vector3<float> const&
 
 namespace vec3
 {
-	template <typename T>
-	inline float scalarProduct(vector3<T> const& v1, vector3<T> const& v2)
+	
+	inline float scalarProduct(vector3 const& v1, vector3 const& v2)
 	{
 		return v1.x() * v2.x() + v1.y() * v2.y() + v1.z() * v2.z();
 	}
 
-	template <typename T>
-	inline vector3<T> crossProduct(vector3<T> const& v1, vector3<T> const& v2)
+	
+	inline vector3 crossProduct(vector3 const& v1, vector3 const& v2)
 	{
-		return vector3<T>
+		return vector3
 			(	
 				v1.y() * v2.z() - v1.z() * v1.y(),
 				v1.z() * v2.x() - v1.x() * v2.z(),
@@ -561,8 +575,8 @@ namespace math
 	inline int32 round(float num)
 	{ return static_cast<int32>(num + 0.5f); }
 
-	template <typename T>
-	inline void invert( T& num )
+	
+	inline void invert( float& num )
 	{ num = 1 / num; }
 }
 

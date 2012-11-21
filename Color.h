@@ -1,50 +1,43 @@
 #ifndef __COLOR_H__
 #define __COLOR_H__
 
-template <typename T>
 struct rgb
 {
 	public:		
 		rgb() 
-			: _r(0), _g(0), _b(0)
+			: _r(0.0f), _g(0.0f), _b(0.0f)
 		{}
-		rgb(T const& red, T const& green, T const& blue) 
+		rgb(float const& red, float const& green, float const& blue) 
 			: _r(red), _g(green), _b(blue) 
 		{}
+		rgb( rgb const& color )
+		{ _r = color.red(); _g = color.green(); _b = color.blue(); }
 
-		void setRed(T value){ _r = value; }
-		void setGreen(T value){ _g = value; }
-		void setBlue(T value){ _b = value; }
+		void setRed(float value){ _r = value; }
+		void setGreen(float value){ _g = value; }
+		void setBlue(float value){ _b = value; }
 
-		T red() const { return _r; }
-		T green() const { return _g; }
-		T blue() const { return _b; }
+		float red() const { return _r; }
+		float green() const { return _g; }
+		float blue() const { return _b; }
 
-		rgb<T>& operator* ( rgb<T> const& color )
-		{
-			_r *= color.red(); _g *= color.green();	_b *= color.blue();
-			return *this;
-		}
+		rgb operator* ( rgb const& color )
+		{ return rgb(_r * color.red(), _g * color.green(), _b * color.blue()); }
 
-		rgb<T>& operator* ( float const& coef )
-		{ 
-			_r *= coef; _g *= coef; _b *= coef;
-			return *this;
-		}
+		rgb operator+ ( rgb const& color )
+		{ return rgb(_r + color.red(), _g + color.green(), _b + color.blue()); }
 
-		rgb<T> operator+ ( rgb<T> const& color )
-		{			
-			return rgb<T>(_r + color.red(), _g + color.green(), _b + color.blue());
-		}
-
-		rgb<T>& operator+= ( rgb<T> const& color )
-		{
-			_r += color.red(); _g += color.green(); _b += color.blue();
-			return *this;
-		}
+		rgb& operator+= ( rgb const& color )
+		{ _r += color.red(); _g += color.green(); _b += color.blue(); return (*this); }
 
 	private:
-		T _r, _g, _b;
+		float _r, _g, _b;
 };
+
+inline rgb operator* ( float const& coef, rgb const& color )
+{ return rgb( coef * color.red(), coef * color.green(), coef * color.blue() ); }
+
+inline rgb operator* ( rgb const& color, float const& coef )
+{ return coef * color; }
 
 #endif

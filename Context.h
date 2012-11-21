@@ -30,16 +30,15 @@ class Context
 			@param width [in] Context width.
 			@param height [in] Context height.
 		*/
-		Context(uint32 width = 0, uint32 height = 0) : _w(width), _h(height), _size(width*height)
+		Context ( uint32 width = 0, uint32 height = 0 ) 
+			: _w(width), _h(height), _size(width*height), _inCycle(false), _updateMVPMneeded(false)			
 		{ 
 			_matrixStack		= new std::vector<matrix4x4>;
-			_colorBuffer		= new rgb<float>[width * height];
+			_colorBuffer		= new rgb[width * height];
 			
-			initZBuffer();
-			
-			_updateMVPMneeded	= false;
+			initZBuffer();	
 
-			_rayTracer			= NULL; // is created when needed
+			_rayTracer			= new RayTracer(); // is created when needed
 		} 		
 
 		/// Context destructor.
@@ -64,7 +63,7 @@ class Context
 
 			@param color[in] RGBA color value.
 		*/
-		void			setCurrentColor(rgb<float> color)
+		void			setCurrentColor(rgb color)
 		{ _currentColor = color; }
 		
 		/// Sets the color used for drawing.
@@ -76,7 +75,7 @@ class Context
 			@param b[in] Blue channel value.
 		*/
 		void			setCurrentColor(float r, float g, float b)
-		{ _currentColor = rgb<float>(r, g, b); }
+		{ _currentColor = rgb(r, g, b); }
 
 		/// Sets the point size used for drawing.
 		/**
@@ -92,7 +91,7 @@ class Context
 
 			@param mode[in] Element type to use for drawing.
 		*/
-		void			setDrawingMode(sglEElementType mode){ _drawingMode = mode; }
+		void setDrawingMode(sglEElementType mode){ _drawingMode = mode; }
 
 		/// Returns currently used drawing mode.
 		/**
@@ -106,7 +105,8 @@ class Context
 		/**
 			Clears the vertex buffer storing all the vertices used to draw the current element and calls appropriate destructors.
 		*/
-		void			clearVertexBuffer(){ _vertexBuffer.clear(); }
+		void clearVertexBuffer(){ _vertexBuffer.clear(); }
+		void clearVectorBuffer(){ _vectorBuffer.clear(); }
 
 		/// Adds a vertex inside the vertex container.
 		/**
@@ -114,7 +114,7 @@ class Context
 
 			@param vertex[in] A vertex.
 		*/
-		void			addVertex( vertex v )
+		void addVertex( vertex v )
 		{ 			
 			if ( _updateMVPMneeded )
 				doMVPMupdate();
@@ -124,8 +124,13 @@ class Context
 			v.wNormalize();			
 
 			v *= _matrix[M_VIEWPORT];
-
+		
 			_vertexBuffer.push_back( v );
+		}
+
+		void addVector( vector3 const& v )
+		{
+			_vectorBuffer.push_back( v );
 		}
 
 		/// Draws an arc
@@ -631,7 +636,7 @@ class Context
 			@param y[in] Y coordinate.
 			@param color[in] A color.
 		*/
-		void			setColorBuffer( uint32 x, uint32 y, rgb<float> color )
+		void			setColorBuffer( uint32 x, uint32 y, rgb color )
 		{
 			uint32 i = _w * y + x;		
 
@@ -708,9 +713,9 @@ class Context
 		{ return _currentAreaMode; }
 
 		void setClearColor(float r, float g, float b)
-		{ setClearColor(rgb<float>(r, g, b)); }
+		{ setClearColor(rgb(r, g, b)); }
 
-		void setClearColor(rgb<float> color)
+		void setClearColor(rgb color)
 		{ _clearColor = color; }
 
 		void clearColor()
@@ -726,17 +731,13 @@ class Context
 		}
 
 		void setSceneDefining( bool value )
-		{
-			if ( !_rayTracer )			
-				_rayTracer = new RayTracer();			
+		{ _isDefiningScene = value; }		
 
-			_isDefiningScene = value;
-		}		
+		void setCurrentMaterial( float const& r, float const& g, float const& b, float const& kd,  float const& ks, float const& shine, float const& T, float const& ior )
+		{ setCurrentMaterial( material( rgb(r, g, b), kd, ks, shine, T, ior ) ); }
 
-		void setMaterial( material const& mat )
-		{
-			_rayTracer->setCurrentMaterial( mat );
-		}
+		void setCurrentMaterial( material const& m )
+		{ _currentMaterial = m; }
 
 		void addLight( PointLight* light )
 		{
@@ -749,24 +750,33 @@ class Context
 		uint32 getVertexBufferSize() const
 		{ return _vertexBuffer.size(); }
 
+		uint32 getVectorBufferSize() const
+		{ return _vectorBuffer.size(); }
+
 		void addTriangle()
 		{
 			// pretty ugly conversion from a vertex to a vector
 			// TODO: unify vector3 and vertex
-						
-			_rayTracer->addTriangle( new Triangle(
-					vector3<float>(_vertexBuffer[0].x(), _vertexBuffer[0].y(), _vertexBuffer[0].z()),
-					vector3<float>(_vertexBuffer[1].x(), _vertexBuffer[1].y(), _vertexBuffer[1].z()),
-					vector3<float>(_vertexBuffer[2].x(), _vertexBuffer[2].y(), _vertexBuffer[2].z()) )
-				);
+				
+			Triangle* triangle = new Triangle(
+						_vectorBuffer[0],
+						_vectorBuffer[1],
+						_vectorBuffer[2]
+					);
+
+			triangle->setMaterial( _currentMaterial );
+
+			_rayTracer->addPrimitive( triangle );
 		}	
 
-		void addSphere( vector3<float> const& center, float const& radius )
+		void addSphere( vector3 const& center, float const& radius )
 		{
 			// setting material is done inside RayTracer::addPrimitive(Primitive*), because it's the same for
 			// all the primitives
+			Sphere* sphere = new Sphere( center, radius );
+			sphere->setMaterial( _currentMaterial );
 
-			_rayTracer->addSphere( new Sphere( center, radius ) );
+			_rayTracer->addPrimitive( sphere );
 		}
 
 		void renderScene()
@@ -802,15 +812,16 @@ class Context
 		uint32 _w, _h;
 		uint32 _size;
 		
-		rgb<float>*				_colorBuffer;
+		rgb*				_colorBuffer;
 		float*					_zbuffer;
 
 		float					_pointSize;
 
-		rgb<float>				_currentColor;
-		rgb<float>				_clearColor;
+		rgb				_currentColor;
+		rgb				_clearColor;
 
 		std::vector<vertex>		_vertexBuffer;
+		std::vector<vector3>	_vectorBuffer;
 		std::vector<matrix4x4>*	_matrixStack;
 		std::vector<uint32>		_edgeBuffer;
 		
@@ -832,8 +843,9 @@ class Context
 		std::vector<edge>		_activeEdges;
 
 		// RayTracer
-		bool						_isDefiningScene;
-		RayTracer*					_rayTracer;
+		bool					_isDefiningScene;
+		RayTracer*				_rayTracer;
+		material				_currentMaterial;
 };
 
 #endif

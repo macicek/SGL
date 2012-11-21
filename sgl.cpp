@@ -130,7 +130,6 @@ void sglBegin( sglEElementType mode )
 	}
 
 	Context* cc = cm.currentContext();
-
 	if( cc->isInCycle() )
 	{
 		setErrCode( SGL_INVALID_OPERATION );
@@ -151,13 +150,16 @@ void sglEnd(void)
 		return;
 	}
 
-	if ( cc->isDefiningScene() && cc->getDrawingMode() == SGL_POLYGON )
+	if ( cc->isDefiningScene() )
 	{
-		// in this case we construct a triangle
-		if ( cc->getVertexBufferSize() != 3 )
-			return;
-
-		cc->addTriangle();
+		// Triangle
+		if ( cc->getDrawingMode() == SGL_POLYGON )
+		{
+			// we construct a triangle only with three points
+			if ( cc->getVectorBufferSize() == 3 )
+				cc->addTriangle();			
+		}
+		cc->clearVectorBuffer();
 	}
 	else
 	{
@@ -202,8 +204,8 @@ void sglEnd(void)
 			}
 			// END SGL_FILL
 		}
-	}
-	cc->clearVertexBuffer();
+		cc->clearVertexBuffer();
+	}	
 	cc->setInCycle(false);
 }
 
@@ -214,7 +216,12 @@ void sglVertex4f(float x, float y, float z, float w)
 
 void sglVertex3f(float x, float y, float z)
 {
-	cm.currentContext()->addVertex( vertex(x, y, z) );
+	Context* cc = cm.currentContext();
+
+	if ( cc->isDefiningScene() )
+		cc->addVector( vector3( x, y, z ) );
+	else
+		cc->addVertex( vertex(x, y, z) );	
 }
 
 void sglVertex2f(float x, float y)
@@ -506,7 +513,7 @@ void sglSphere(const float x,
 		return;
 	}
 
-	cc->addSphere( vector3<float>(x, y, z), radius );
+	cc->addSphere( vector3(x, y, z), radius );
 }
 
 void sglMaterial(const float r,
@@ -519,13 +526,13 @@ void sglMaterial(const float r,
 				 const float ior)
 {
 	Context* cc = cm.currentContext();
-	if ( !cc->isInCycle() )
+	if ( cc->isInCycle() )
 	{
 		setErrCode( SGL_INVALID_OPERATION );
 		return;
 	}
 
-	cm.currentContext()->setMaterial( material( rgb<float>(r, g, b), kd, ks, shine, T, ior ) );
+	cm.currentContext()->setCurrentMaterial( r, g, b, kd, ks, shine, T, ior );
 }
 
 void sglPointLight(const float x,
@@ -542,7 +549,7 @@ void sglPointLight(const float x,
 		return;
 	}
 
-	cc->addLight( new PointLight( vector3<float>(x, y, z), rgb<float>(r, g, b) ) );
+	cc->addLight( new PointLight( vector3(x, y, z), rgb(r, g, b) ) );
 }
 
 void sglRayTraceScene()

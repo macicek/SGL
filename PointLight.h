@@ -4,23 +4,23 @@
 class PointLight
 {
 	public:
-		PointLight( vector3<float> const& position, rgb<float> const& color )
+		PointLight( vector3 const& position, rgb const& color )
 			: _position(position), _color(color)
 		{ }
 
-		vector3<float> getPosition() const
+		vector3 getPosition() const
 		{ return _position; }
 
 		float getPosX() const { return _position.x(); }
 		float getPosY() const { return _position.y(); }
 		float getPosZ() const { return _position.z(); }
 
-		rgb<float> getColor() const
+		rgb getColor() const
 		{ return _color; }
 
 	private:
-		vector3<float>	_position;
-		rgb<float>		_color;
+		vector3	_position;
+		rgb		_color;
 };
 
 #endif

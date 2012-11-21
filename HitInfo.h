@@ -17,7 +17,7 @@ class HitInfo
 		void setDistance( float const& distance )
 		{ _distance = distance; }
 
-		Primitive* getHitPrimitive() const
+		Primitive* getPrimitive()
 		{ return _hitPrimitive; }
 
 		float getDistance() const
@@ -29,17 +29,17 @@ class HitInfo
 		void setEpsilon( float const& epsilon )
 		{ _epsilon = epsilon; }
 
-		void setNormal( vector3<float> const& normal )
+		void setNormal( vector3 const& normal )
 		{ _normal = normal; }
 
-		vector3<float> getNormal() const
+		vector3 getNormal() const
 		{ return _normal; }
 
 	private:
 		Primitive*		_hitPrimitive;		
 		float			_distance;
 		float			_epsilon;	
-		vector3<float>	_normal;
+		vector3			_normal;
 };
 
 #endif

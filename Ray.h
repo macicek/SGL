@@ -7,23 +7,33 @@ class Ray
 {
 	public:
 		Ray() 
-			: _origin( vector3<float>(0.0f, 0.0f, 0.0f) ), _direction( vector3<float>(0.0f, 0.0f, 0.0f) )
+			:	_origin( vector3(0.0f, 0.0f, 0.0f) ), _direction( vector3(0.0f, 0.0f, 0.0f) ), 
+				_tmin(0.f), _tmax( std::numeric_limits<float>::max() )
 		{ }
 
-		Ray( vector3<float>& origin, vector3<float>& direction )
+		Ray( vector3& origin, vector3& direction )
 			: _origin(origin), _direction(direction)
 		{ }
 
-		vector3<float> getOrigin() const
+		vector3 getOrigin() const
 		{ return _origin; }
 
-		vector3<float> getDirection() const
+		vector3 getDirection() const
 		{ return _direction; }
+
+		float tmin() const
+		{ return _tmin; }
+
+		float tmax() const
+		{ return _tmax; }
 
 
 	private:
-		vector3<float> _origin;
-		vector3<float> _direction;
+		vector3 _origin;
+		vector3 _direction;
+		
+		float _tmin;
+		float _tmax;
 };
 
 #endif

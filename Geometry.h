@@ -77,9 +77,9 @@ struct vertex
 			return *this;
 		}
 
-		vector3<float> toVector3()
+		vector3 toVector3() const
 		{
-			return vector3<float>(_x, _y, _z);
+			return vector3(_x, _y, _z);
 		}
 
 	private:
