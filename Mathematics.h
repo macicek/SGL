@@ -21,8 +21,11 @@ struct vector3
 		void setY( float val ){ _y = val; }
 		void setZ( float val ){ _z = val; }
 		
-		vector3 operator- ( vector3 const& v )
+		vector3 operator- ( vector3 const& v ) const
 		{ return vector3( _x - v.x(), _y - v.y(), _z - v.z() ); }
+
+		vector3 operator+ ( vector3 const& v ) const
+		{ return vector3( _x + v.x(), _y + v.y(), _z + v.z() ); }
 
 		float length() const
 		{ return sqrt( _x*_x + _y*_y + _z*_z ); }
@@ -41,14 +44,9 @@ struct vector3
 			return *this;
 		}
 
-		bool isNull()
+		bool isNull() const
 		{
-			return (_x == 0 && _y == 0 && _z == 0);
-		}
-
-		void print() const
-		{
-			//std::cout << "(" << _x << "," << _y << "," << _z << ")";
+			return ( _x < 0.0f && _y == 0.0f && _z == 0.0f );
 		}
 
 	private:
@@ -62,14 +60,6 @@ inline vector3 operator* ( vector3 const& v, float const& n )
 
 inline vector3 operator* ( float const& n, vector3 const& v )
 { return v * n; }
-
-
-inline vector3 operator- ( vector3 const& v1, vector3 const& v2 )
-{ return vector3( v1.x() - v2.x(), v1.y() - v2.y(), v1.z() - v2.z() ); }
-
-
-inline vector3 operator+ ( vector3 const& v1, vector3 const& v2 )
-{ return vector3( v1.x() + v2.x(), v1.y() + v2.y(), v1.z() + v2.z() ); }
 
 struct matrix4x4
 {
@@ -550,34 +540,40 @@ inline vector3 operator* ( matrix4x4 const& matrix, vector3 const& vec )
 	return res;
 }
 
-namespace vec3
-{
-	
-	inline float scalarProduct(vector3 const& v1, vector3 const& v2)
-	{
-		return v1.x() * v2.x() + v1.y() * v2.y() + v1.z() * v2.z();
-	}
-
-	
-	inline vector3 crossProduct(vector3 const& v1, vector3 const& v2)
-	{
-		return vector3
-			(	
-				v1.y() * v2.z() - v1.z() * v1.y(),
-				v1.z() * v2.x() - v1.x() * v2.z(),
-				v1.x() * v2.y() - v1.y() * v2.x()
-			);
-	}
-}
-
 namespace math
 {
-	inline int32 round(float num)
-	{ return static_cast<int32>(num + 0.5f); }
+	inline int32 round( float num )
+	{ return static_cast<int32>( num + 0.5f ); }
 
-	
 	inline void invert( float& num )
 	{ num = 1 / num; }
-}
+
+	inline bool betweenInc( float x, float a, float b )
+	{ return x >= a && x <= b; }
+
+	inline bool betweenNInc( float x, float a, float b )
+	{ return x > a && x < b; }
+
+	namespace vec
+	{
+	
+		inline float scalarProduct(vector3 const& v1, vector3 const& v2)
+		{
+			return v1.x() * v2.x() + v1.y() * v2.y() + v1.z() * v2.z();
+		}
+
+	
+		inline vector3 crossProduct(vector3 const& v1, vector3 const& v2)
+		{
+			return vector3
+				(	
+					v1.y() * v2.z() - v1.z() * v1.y(),
+					v1.z() * v2.x() - v1.x() * v2.z(),
+					v1.x() * v2.y() - v1.y() * v2.x()
+				);
+		}
+	} // NAMESPACE VEC
+
+} // NAMESPEC MATH
 
 #endif

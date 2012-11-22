@@ -28,8 +28,9 @@ class RayTracer
 			@return		color of the reflection
 		*/
 		const rgb castRay( uint32 x, uint32 y )
-		{						
-			return intersectRayWithScene( generateRay(x, y), new HitInfo );		
+		{					
+			HitInfo hitInfo;
+			return intersectRayWithScene( &generateRay(x, y), &hitInfo );		
 		}
 
 		/// Generates a ray for an [x, y] coordinate
@@ -41,7 +42,7 @@ class RayTracer
 			@param		y[in] Y coord
 			@return		Ray
 		*/
-		Ray* generateRay( uint32 x, uint32 y )
+		Ray generateRay( uint32 x, uint32 y )
 		{			
 			float xn = 2.0f * static_cast<float>(x) / static_cast<float>(_viewport.width()) - 1.0f;
 			float yn = 2.0f * static_cast<float>(y) / static_cast<float>(_viewport.height()) - 1.0f;
@@ -49,14 +50,12 @@ class RayTracer
 			vertex origin(xn, yn, -1.0f);
 			origin *= _inverseMVP;
 			origin.wNormalize();
-			vector3 orig = origin.toVector3();
 
 			vertex direction(xn, yn, 1.0f);
 			direction *= _inverseMVP;
-			direction.wNormalize();
-			vector3 dir = direction.toVector3();
+			direction.wNormalize();			
 
-			return new Ray( orig, dir.normalize() );
+			return Ray( vector3(origin), vector3(direction - origin).normalize() );
 		}
 
 		/// Intersection of the scene and a ray
@@ -71,50 +70,48 @@ class RayTracer
 		*/
 		const rgb intersectRayWithScene( Ray* ray, HitInfo* hitInfo )
 		{
+			rgb color;
 			for ( std::vector< Primitive* >::iterator it = _primitives.begin(); it != _primitives.end(); ++it )
 			{
 				// we cast the ray at every primitive (sphere, triangle) in the scene
 				// and see what happens
-				if ( (*it)->intersect( ray, hitInfo ) )
-				{
-					// we hit a primitive	
-					hitInfo->setPrimitive( *it );
-					return shade( ray, hitInfo );
-				}
+				Primitive* primitive = *it;
+				if ( primitive->intersect( ray, hitInfo ) )	
+					hitInfo->setPrimitive( primitive );
 			}
-			return WHITE; // background color
+			return shade( ray, hitInfo );  // background color
 		}
 
 		const rgb shade( Ray* ray, HitInfo *hitInfo )
 		{
 			rgb color; // rgb is an additive color mode, therefore we start with #000000 (black) and add partial colors
-			const vector3 hit = ray->getOrigin() + ( ray->getDirection() * hitInfo->getDistance() ); // place where we hit the primitive
-			const material mat = hitInfo->getPrimitive()->getMaterial(); // material used to calculate things such as color, reflective properties			
 
-			// add contribution of every light source
-			for ( std::vector<PointLight*>::iterator it = _lights.begin(); it != _lights.end(); ++it )
+			if ( Primitive* primitive = hitInfo->getPrimitive() )
 			{
-				PointLight* light = *it;
-				vector3 shadowRayDir = light->getPosition() - hit;				
+				const vector3 hit = ray->getOrigin() + ( ray->getDirection() * hitInfo->getDistance() ); // place where we hit the primitive
+				const material mat = primitive->getMaterial(); // material used to calculate things such as color, reflective properties			
+
+				// add contribution of every light source
+				for ( std::vector<PointLight*>::iterator it = _lights.begin(); it != _lights.end(); ++it )
+				{
+					PointLight* light = *it;
+					vector3 shadowRayDir = light->getPosition() - hit;				
 				
-				float intensity = vec3::scalarProduct( hitInfo->getNormal(), shadowRayDir.normalize() );
-				if (intensity > 0.0f)
-				{					
+					float intensity = math::vec::scalarProduct( hitInfo->getNormal(), shadowRayDir.normalize() );
+					if ( intensity > 0.0f )
+					{					
+						color += mat.color() * mat.diffuse() * intensity * light->getColor();
 
-					color += mat.color() * mat.diffuse() * intensity * light->getColor();
-
-					vector3 R = shadowRayDir - ( 2.0f * vec3::scalarProduct( shadowRayDir, hitInfo->getNormal() ) * hitInfo->getNormal() );
+						vector3 R = shadowRayDir - ( 2.0f * math::vec::scalarProduct( shadowRayDir, hitInfo->getNormal() ) * hitInfo->getNormal() );
 				
-					intensity = vec3::scalarProduct(R, ray->getDirection() );				
-					intensity = pow( intensity, mat.shine() );					
-					
-					if ( intensity > 10000.0f )
-						intensity = 10000.0f;
+						intensity = math::vec::scalarProduct(R, ray->getDirection() );				
+						intensity = pow( intensity, mat.shine() );					
+						intensity = std::min( intensity, 10000.0f );
 
-					color += mat.specular() * intensity * light->getColor();
-				}
-			}				
-
+						color += mat.specular() * intensity * light->getColor();
+					}
+				}				
+			}
 			return color;
 		}
 
@@ -136,8 +133,6 @@ class RayTracer
 		matrix4x4					_inverseMVP;
 		matrix4x4					_viewportM;
 		viewport					_viewport;
-
-		material					_currentMaterial;
 };
 
 #endif

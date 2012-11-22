@@ -11,8 +11,9 @@ class Ray
 				_tmin(0.f), _tmax( std::numeric_limits<float>::max() )
 		{ }
 
-		Ray( vector3& origin, vector3& direction )
-			: _origin(origin), _direction(direction)
+		Ray( vector3 const& origin, vector3 const& direction )
+			:	_origin(origin), _direction(direction),
+				_tmin(0.f), _tmax( std::numeric_limits<float>::max() )
 		{ }
 
 		vector3 getOrigin() const

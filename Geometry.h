@@ -68,7 +68,7 @@ struct vertex
 
 		vertex& vectorNormalize()
 		{
-			float magnitute = sqrtf(powf(_x, 2.0f) + powf(_y, 2.0f) + powf(_z, 2.0f));
+			float magnitute = sqrt( (_x*_x) + (_y*_y) + (_z*_z) );
 
 			_x /= magnitute;
 			_y /= magnitute;
@@ -77,10 +77,11 @@ struct vertex
 			return *this;
 		}
 
-		vector3 toVector3() const
-		{
-			return vector3(_x, _y, _z);
-		}
+		operator vector3()
+		{ return vector3(_x, _y, _z); }
+
+		vertex operator-(vertex const& v)
+		{ return vertex(_x - v.x(), _y - v.y(), _z - v.z(), _w - v.w()); }
 
 	private:
 		float _x, _y, _z, _w;

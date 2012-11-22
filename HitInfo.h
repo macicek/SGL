@@ -9,6 +9,7 @@ class HitInfo
 {
 	public:
 		HitInfo()
+			: _hitPrimitive( NULL ), _distance( std::numeric_limits<float>::max() )
 		{ }
 
 		void setPrimitive( Primitive* primitive )
@@ -23,12 +24,6 @@ class HitInfo
 		float getDistance() const
 		{ return _distance; }
 
-		float getEpsilon() const
-		{ return _epsilon; }
-
-		void setEpsilon( float const& epsilon )
-		{ _epsilon = epsilon; }
-
 		void setNormal( vector3 const& normal )
 		{ _normal = normal; }
 
@@ -37,8 +32,7 @@ class HitInfo
 
 	private:
 		Primitive*		_hitPrimitive;		
-		float			_distance;
-		float			_epsilon;	
+		float			_distance;		
 		vector3			_normal;
 };
 
