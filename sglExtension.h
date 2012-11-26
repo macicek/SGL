@@ -32,7 +32,7 @@ namespace sglext
 		return m;
 	}
 
-	void sglMultMatrix(const float* matrix)
+	void sglMultMatrix( const float* matrix )
 	{
 		Context* cc = cm.currentContext();
 

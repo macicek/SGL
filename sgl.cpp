@@ -221,7 +221,7 @@ void sglVertex3f(float x, float y, float z)
 	if ( cc->isDefiningScene() )
 		cc->addVector( vector3( x, y, z ) );
 	else
-		cc->addVertex( vertex(x, y, z) );	
+		cc->addVertex( vertex( x, y, z ) );	
 }
 
 void sglVertex2f(float x, float y)

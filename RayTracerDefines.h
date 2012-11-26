@@ -9,6 +9,8 @@ const rgb RED( 1.0f, 0.0f, 0.0f );
 const rgb GREEN( 0.0f, 1.0f, 0.0f );
 const rgb BLUE( 0.0f, 0.0f, 1.0f );
 
+#define BACKGROUND BLACK
+
 struct material
 {
 	public:

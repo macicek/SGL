@@ -71,46 +71,54 @@ class RayTracer
 		const rgb intersectRayWithScene( Ray* ray, HitInfo* hitInfo )
 		{
 			rgb color;
-			for ( std::vector< Primitive* >::iterator it = _primitives.begin(); it != _primitives.end(); ++it )
-			{
+			int i = 0;			
+
+			for ( std::vector< Primitive* >::iterator it = _primitives.begin(); it != _primitives.end(); ++it, ++i )
+			{	
 				// we cast the ray at every primitive (sphere, triangle) in the scene
 				// and see what happens
 				Primitive* primitive = *it;
 				if ( primitive->intersect( ray, hitInfo ) )	
 					hitInfo->setPrimitive( primitive );
 			}
-			return shade( ray, hitInfo );  // background color
+
+			if ( hitInfo->getPrimitive() )
+				return phong( ray, hitInfo ); // shader
+			else
+				return BACKGROUND; // background
 		}
 
-		const rgb shade( Ray* ray, HitInfo *hitInfo )
+		const rgb phong( Ray* ray, HitInfo* hitInfo )
 		{
-			rgb color; // rgb is an additive color mode, therefore we start with #000000 (black) and add partial colors
+			rgb color; // initial color vector : #000000
+			
+			const Primitive*	primitive	= hitInfo->getPrimitive();			
+			const vector3		hitPoint	= ray->getOrigin() + ( ray->getDirection() * hitInfo->getDistance() );
+			const material		material	= primitive->getMaterial();			
 
-			if ( Primitive* primitive = hitInfo->getPrimitive() )
+			// contribution of every light source
+			for ( std::vector<PointLight*>::iterator it = _lights.begin(); it != _lights.end(); ++it )
 			{
-				const vector3 hit = ray->getOrigin() + ( ray->getDirection() * hitInfo->getDistance() ); // place where we hit the primitive
-				const material mat = primitive->getMaterial(); // material used to calculate things such as color, reflective properties			
+				PointLight* light		= *it;
 
-				// add contribution of every light source
-				for ( std::vector<PointLight*>::iterator it = _lights.begin(); it != _lights.end(); ++it )
-				{
-					PointLight* light = *it;
-					vector3 shadowRayDir = light->getPosition() - hit;				
+				const rgb lightColor	= light->getColor();
+				const vector3 shadowDir	= (light->getPosition() - hitPoint).normalize();
+				const vector3 hitNormal	= hitInfo->getNormal();
 				
-					float intensity = math::vec::scalarProduct( hitInfo->getNormal(), shadowRayDir.normalize() );
-					if ( intensity > 0.0f )
-					{					
-						color += mat.color() * mat.diffuse() * intensity * light->getColor();
+				float intensity = math::vec::scalarProduct( hitNormal, shadowDir );
+				if ( intensity > EPSILON )
+				{					
+					color += material.color() * material.diffuse() * intensity * lightColor;
 
-						vector3 R = shadowRayDir - ( 2.0f * math::vec::scalarProduct( shadowRayDir, hitInfo->getNormal() ) * hitInfo->getNormal() );
-				
-						intensity = math::vec::scalarProduct(R, ray->getDirection() );				
-						intensity = pow( intensity, mat.shine() );					
-						intensity = std::min( intensity, 10000.0f );
+					// specular
+					vector3 shineDir = shadowDir - ( 2.0f * math::vec::scalarProduct( shadowDir, hitNormal ) * hitNormal );				
+					intensity = math::vec::scalarProduct( shineDir, ray->getDirection() );				
+					intensity = pow( intensity, material.shine() );					
+					intensity = std::min( intensity, 10000.0f );
 
-						color += mat.specular() * intensity * light->getColor();
-					}
-				}				
+					color += material.specular() * intensity * lightColor;
+				}
+								
 			}
 			return color;
 		}
