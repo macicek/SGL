@@ -105,7 +105,8 @@ class Context
 		/**
 			Clears the vertex buffer storing all the vertices used to draw the current element and calls appropriate destructors.
 		*/
-		void clearVertexBuffer(){ _vertexBuffer.clear(); }
+		void clearVertexBuffer(){ _vertexBuffer.clear(); }	
+
 		void clearVectorBuffer(){ _vectorBuffer.clear(); }
 
 		/// Adds a vertex inside the vertex container.
@@ -715,8 +716,11 @@ class Context
 		void setClearColor(float r, float g, float b)
 		{ setClearColor(rgb(r, g, b)); }
 
-		void setClearColor(rgb color)
-		{ _clearColor = color; }
+		void setClearColor( rgb color )
+		{ 
+			_clearColor = color;			
+			_rayTracer->setBackground( color );
+		}
 
 		void clearColor()
 		{			

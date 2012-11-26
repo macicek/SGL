@@ -85,7 +85,7 @@ class RayTracer
 			if ( hitInfo->getPrimitive() )
 				return phong( ray, hitInfo ); // shader
 			else
-				return BACKGROUND; // background
+				return _background; // background
 		}
 
 		const rgb phong( Ray* ray, HitInfo* hitInfo )
@@ -134,6 +134,12 @@ class RayTracer
 			_viewport = viewport;
 		}
 
+		void setBackground( rgb background )
+		{ _background = background;	}
+
+		rgb getBackround() const
+		{ return _background; }
+
 	private:
 		std::vector<PointLight*>	_lights;
 		std::vector<Primitive*>		_primitives;
@@ -141,6 +147,8 @@ class RayTracer
 		matrix4x4					_inverseMVP;
 		matrix4x4					_viewportM;
 		viewport					_viewport;
+
+		rgb							_background;
 };
 
 #endif
