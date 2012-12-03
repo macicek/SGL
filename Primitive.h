@@ -29,28 +29,51 @@ class Triangle : public Primitive
 				_normal( math::vec::crossProduct( _edge1, _edge2 ).normalize() ) // plane normal vector
 		{ }
 	
+		/// Intersection of a ray and a triangle
+		/**
+			Intersects the ray with a triangular plane. Culling implementation, only considers
+			intersection from the same side as normal.
+
+			@param Ray[in] A ray
+			@param HitInfo[in] Hit info data structure.
+			@return bool
+		*/
 		bool intersect( Ray* ray, HitInfo* hitInfo ) const
 		{										
 			vector3 rayDir = ray->getDirection();
 			vector3 rayOrg = ray->getOrigin();							
-	
-			/*vector3 s1 = math::vec::crossProduct(ray->getDirection(), _edge2);
-			float divisor = math::vec::scalarProduct(s1, _edge1);
-			if (divisor == 0.)
+		
+			// begin calculating determinant - also used to calculate U parameter
+			vector3 pvec = math::vec::crossProduct(rayDir, _edge2);
+
+			// if determinant is near zero, ray lies in plane of triangle
+			float det = math::vec::scalarProduct(_edge1, pvec);
+
+			if (det < EPSILON)
 				return false;
-			float invDivisor = 1.f / divisor;
-			// Compute first barycentric coordinate
-			vector3 d = ray->getOrigin() - _a;
-			float b1 = math::vec::scalarProduct(d, s1) * invDivisor;
-			if (b1 < 0. || b1 > 1.)
+
+			// calculate distance from vert0 to ray origin
+			vector3 tvec = rayOrg - _a;
+
+			// calculate U parameter and test bounds 
+			float u = math::vec::scalarProduct(tvec, pvec);
+			if (u < 0.0f || u > det)
 				return false;
-			// Compute second barycentric coordinate
-			vector3 s2 = math::vec::crossProduct(d, _edge1);
-			float b2 = math::vec::scalarProduct(ray->getDirection(), s2) * invDivisor;
-			if (b2 < 0. || b1 + b2 > 1.)
+
+			// prepare to test V parameter 
+			vector3 qvec = math::vec::crossProduct(tvec, _edge1);
+
+			// calculate V parameter and test bounds
+			float v = math::vec::scalarProduct(rayDir, qvec);
+			if (v < 0.0f || u + v > det)
 				return false;
-			// Compute _t_ to intersection point
-			float t = math::vec::scalarProduct(_edge2, s2) * invDivisor;
+
+			// calculate t, scale parameters, ray intersects triangle
+			float t = math::vec::scalarProduct(_edge2, qvec);
+			
+			math::invert(det);
+			t *= det;
+
 			if ( t < hitInfo->getDistance() && math::betweenNInc(t, ray->tmin(), ray->tmax()) )
 			{
 				hitInfo->setNormal( _normal );
@@ -58,55 +81,7 @@ class Triangle : public Primitive
 				// primitive is set after return
 				return true;
 			}
-			return false;*/
-		
-
-
-   
-   /* begin calculating determinant - also used to calculate U parameter */
-   vector3 pvec = math::vec::crossProduct(ray->getDirection(), _edge2);
-
-   /* if determinant is near zero, ray lies in plane of triangle */
-   float det = math::vec::scalarProduct(_edge1, pvec);
-
-
-   if (det < EPSILON)
-      return 0;
-
-   /* calculate distance from vert0 to ray origin */
-   vector3 tvec = ray->getOrigin() - _a;
-
-   /* calculate U parameter and test bounds */
-   float u = math::vec::scalarProduct(tvec, pvec);
-   if (u < 0.0 || u > det)
-      return false;
-
-   /* prepare to test V parameter */
-   vector3 qvec = math::vec::crossProduct(tvec, _edge1);
-
-    /* calculate V parameter and test bounds */
-   float v = math::vec::scalarProduct(ray->getDirection(), qvec);
-   if (v < 0.0 || u + v > det)
-      return false;
-
-   /* calculate t, scale parameters, ray intersects triangle */
-   float t = math::vec::scalarProduct(_edge2, qvec);
-   float inv_det = 1.0 / det;
-   t *= inv_det;
-   u *= inv_det;
-   v *= inv_det;
-
-   if ( t < hitInfo->getDistance() && math::betweenNInc(t, ray->tmin(), ray->tmax()) )
-			{
-				hitInfo->setNormal( _normal );
-				hitInfo->setDistance( t );
-				// primitive is set after return
-				return true;
-			}
-   return false;
-
-
-
+			return false;
 		}
 
 	private:

@@ -3,6 +3,19 @@
 
 #include <math.h>
 
+/// A Ray Tracer main class
+/**
+	How it works:
+
+	0) Context casts ray at every coordinate inside viewport from a transformed camera position
+	1) cast ray : castRay
+	2) generate ray for [x,y] + hitInfo for each [x,y] inside viewport : generateRay
+	3) intersect generated ray with the scene : intersectRayWithScene
+		3a) + shade color
+		3b) + reflection color
+		3c) + refraction color
+		3d) return total color
+*/
 class RayTracer
 {
 	public:	
@@ -64,9 +77,14 @@ class RayTracer
 			inside hitInfo and calculates the color of the reflection based on the Phong model. The color then bubbles up
 			to castRay-renderScene and is written inside the color buffer.
 
-			@param		ray
-			@param		hitInfo	Info structure to describe the intersection of the ray and the scene
-			@return		color
+			I case we hit something, we also check the material we hit.
+
+			In case of specular materials, we generate reflective rays/ In case of refractive materials,
+			we generate refractive rays. We only generate rays up until MAX_RAY_DEPTH, to prevent deadlock.
+
+			@param		Ray[in]
+			@param		HitInfo[in]	Info structure to describe the intersection of the ray and the scene
+			@return		rgb
 		*/
 		rgb intersectRayWithScene( Ray* ray, HitInfo* hitInfo )
 		{						
@@ -87,56 +105,13 @@ class RayTracer
 			// we hit something
 			if ( Primitive* primitive = hitInfo->getPrimitive() )
 			{				
-				color = shade( ray, hitInfo ); // shader
-				material material = primitive->getMaterial();
-				vector3 normal = hitInfo->getNormal();
-				const vector3		hitPoint	= ray->getOrigin() + ( ray->getDirection() * hitInfo->getDistance() );
-
+				color = shade( ray, hitInfo ); // diffuse + specular				
+				
 				// reflection
-
-				if ( material.specular() > 0.0f )
-				{
-										
-					vector3 direction = ray->getDirection() - 2.0f * math::vec::scalarProduct( ray->getDirection(), normal) * normal;
-					direction.normalize();						
-
-					Ray reflectedRay(hitPoint + direction * EPSILON, direction);
-					reflectedRay.setDepth( ray->getDepth() + 1 );
-
-					color += intersectRayWithScene( &reflectedRay, &HitInfo() ) * material.specular();
-				}
-
+				color += castReflectedRays( ray, hitInfo ); // reflection
+				
 				// refraction
-					
-				if( material.transmittence() > 0.0f )
-				{					
-					float d = math::vec::scalarProduct(ray->getDirection(), normal);
-					float gamma;
-			
-					if( d < 0.0f )
-					{				
-						gamma = 1.0/material.refraction();
-					}
-					else
-					{					
-						gamma = material.refraction();
-						d = -d;
-						normal = -1.0f * normal;
-					}
-
-					float sqrterm = 1.0 - gamma * gamma * (1.0 - d * d);
-
-					sqrterm = d * gamma + sqrtf(sqrterm);
-					
-					uint32 depth = ray->getDepth() + 1;
-					vector3 direction = -sqrterm * normal + ray->getDirection() * gamma;
-					vector3 origin = hitPoint + direction * EPSILON;								
-					
-					Ray refractedRay(origin, direction);
-					refractedRay.setDepth(depth);
-
-					color += intersectRayWithScene( &refractedRay, &HitInfo() ) * material.transmittence();
-				}
+				color += castRefractedRays( ray, hitInfo ); // refraction
 			}
 			else		
 				return _background; // background
@@ -144,9 +119,92 @@ class RayTracer
 			return color;
 		}
 
-		bool isInShadow( Ray* ray, HitInfo* hitInfo )
+		/// Casts reflected rays
+		/**
+			In case the material is specular, it casts a reflected ray.
+
+			@param		Ray
+			@param		HitInfo[in]	Info structure to describe the intersection of the ray and the scene
+			@return		rgb
+		*/
+		const rgb castReflectedRays( Ray* ray, HitInfo* hitInfo )
 		{
-			bool result = false;			
+			float specular = hitInfo->getPrimitive()->getMaterial().specular();
+			if ( specular > 0.0f )
+			{
+				const vector3 hitPoint	= ray->getOrigin() + ( ray->getDirection() * hitInfo->getDistance() );
+				const vector3 normal = hitInfo->getNormal();
+
+				vector3 direction = ray->getDirection() - 2.0f * math::vec::scalarProduct( ray->getDirection(), normal) * normal;
+				direction.normalize();						
+
+				Ray reflectedRay(hitPoint + direction * EPSILON, direction);
+				reflectedRay.setDepth( ray->getDepth() + 1 );
+
+				return intersectRayWithScene( &reflectedRay, &HitInfo() ) * specular;
+			}
+			return rgb();
+		}
+
+		/// Casts refracted rays
+		/**
+			In case the material is transmittive (light can go through) it casts a transmittive ray.
+
+			@param		Ray[in]
+			@param		HitInfo[in]	Info structure to describe the intersection of the ray and the scene
+			@return		rgb
+		*/
+		const rgb castRefractedRays( Ray* ray, HitInfo* hitInfo )
+		{
+			float transmittence = hitInfo->getPrimitive()->getMaterial().transmittence();
+			if( transmittence > 0.0f )
+			{					
+				float refraction = hitInfo->getPrimitive()->getMaterial().refraction();
+				const vector3 hitPoint	= ray->getOrigin() + ( ray->getDirection() * hitInfo->getDistance() );
+				vector3 normal = hitInfo->getNormal();
+
+				float d = math::vec::scalarProduct(ray->getDirection(), normal);
+				float gamma;
+			
+				if( d < 0.0f )
+				{				
+					gamma = 1.0 / refraction;
+				}
+				else
+				{					
+					gamma = refraction;
+					d = -d;
+					normal = -1.0f * normal;
+				}
+
+				float sqrterm = 1.0 - gamma * gamma * (1.0 - d * d);
+
+				sqrterm = d * gamma + sqrtf(sqrterm);
+					
+				uint32 depth = ray->getDepth() + 1;
+				vector3 direction = -sqrterm * normal + ray->getDirection() * gamma;
+				vector3 origin = hitPoint + direction * EPSILON;								
+					
+				Ray refractedRay(origin, direction);
+				refractedRay.setDepth(depth);
+
+				return intersectRayWithScene( &refractedRay, &HitInfo() ) * transmittence;
+			}
+			return rgb();
+		}
+
+		/// Checks if hit is in shadow
+		/**
+			Functions similarly to intersectWithScene, although without any overhead. A ray is given with
+			origin inside hitpoint and range limited to light distance. Then it checks if it hits something
+			along the way. If it does, the hit point is inside a shadow.
+
+			@param ray[in] ray
+			@param hitInfo[in] hit result
+			@return bool
+		*/
+		bool isInShadow( Ray* ray, HitInfo* hitInfo )
+		{						
 			for ( std::vector< Primitive* >::iterator it = _primitives.begin(); it != _primitives.end(); ++it )
 			{	
 				// we cast the ray at every primitive (sphere, triangle) in the scene
@@ -161,6 +219,15 @@ class RayTracer
 			return false;			
 		}
 
+		/// Phong shader
+		/**
+			Based on given hit info and ray parameters, calculates a resulting color. Both diffuse and shiny.
+			contributions.
+
+			@param ray[in] ray
+			@param hitInfo[in] hit result
+			@return const color
+		*/
 		const rgb shade( Ray* ray, HitInfo* hitInfo )
 		{
 			rgb color; // initial color vector : #000000
@@ -174,19 +241,20 @@ class RayTracer
 			{
 				PointLight* light = *it;
 
-				const rgb		lightColor	= light->getColor();
+				const vector3	hitNormal	= hitInfo->getNormal();				
 				const vector3	lightPos	= light->getPosition();
 				const vector3	shadowDir	= (lightPos - hitPoint).normalize();
-				const vector3	lightDir	= (hitPoint - lightPos).normalize();
-				const vector3	hitNormal	= hitInfo->getNormal();								
 
 				float intensity = math::vec::scalarProduct( hitNormal, shadowDir );
-				if ( intensity > 0.0f )
-				{				
-					Ray lightRay( lightPos, lightDir, 0.0f, (lightPos-hitPoint).length() - EPSILON );
-					HitInfo lightHF;
 
-					if (isInShadow(&lightRay, &lightHF))
+				if ( intensity > 0.0f )
+				{
+					const rgb		lightColor	= light->getColor();
+					const vector3	lightDir	= (hitPoint - lightPos).normalize();
+															
+					Ray lightRay( lightPos, lightDir, 0.0f, (lightPos-hitPoint).length() - EPSILON );					
+
+					if (isInShadow(&lightRay, &HitInfo()))
 						continue;
 					
 					color += material.color() * material.diffuse() * intensity * lightColor;
