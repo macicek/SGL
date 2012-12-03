@@ -1,7 +1,8 @@
 #ifndef __RAY_TRACER_DEFINES_H__
 #define __RAY_TRACER_DEFINES_H__
 
-const float EPSILON = 0.000001f;
+const float EPSILON = 1e-1f;
+const uint32 MAX_RAY_DEPTH = 10;
 
 const rgb WHITE( 1.0f, 1.0f, 1.0f );
 const rgb BLACK( 0.0f, 0.0f, 0.0f );
@@ -9,7 +10,6 @@ const rgb RED( 1.0f, 0.0f, 0.0f );
 const rgb GREEN( 0.0f, 1.0f, 0.0f );
 const rgb BLUE( 0.0f, 0.0f, 1.0f );
 
-#define BACKGROUND BLACK
 
 struct material
 {

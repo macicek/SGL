@@ -32,114 +32,81 @@ class Triangle : public Primitive
 		bool intersect( Ray* ray, HitInfo* hitInfo ) const
 		{										
 			vector3 rayDir = ray->getDirection();
-			vector3 rayOrg = ray->getOrigin();
-		
-			/*float den = -math::vec::scalarProduct( _normal, rayDir );
-
-			if ( den > -EPSILON )
+			vector3 rayOrg = ray->getOrigin();							
+	
+			/*vector3 s1 = math::vec::crossProduct(ray->getDirection(), _edge2);
+			float divisor = math::vec::scalarProduct(s1, _edge1);
+			if (divisor == 0.)
 				return false;
-
-			math::invert( den );
-
-			const vector3 origin = rayOrg - _a;
-			const vector3 cp = math::vec::crossProduct( rayDir, origin );
-
-			float u = -1.0f * math::vec::scalarProduct( _edge2, cp ) * den;
-			if ( u < -EPSILON || u > (1.0f - EPSILON) )
+			float invDivisor = 1.f / divisor;
+			// Compute first barycentric coordinate
+			vector3 d = ray->getOrigin() - _a;
+			float b1 = math::vec::scalarProduct(d, s1) * invDivisor;
+			if (b1 < 0. || b1 > 1.)
 				return false;
-
-			float v = math::vec::scalarProduct( _edge1, cp) * den;
-			if ( v < -EPSILON || ( (u+v) > (1.0f - EPSILON) ) )
+			// Compute second barycentric coordinate
+			vector3 s2 = math::vec::crossProduct(d, _edge1);
+			float b2 = math::vec::scalarProduct(ray->getDirection(), s2) * invDivisor;
+			if (b2 < 0. || b1 + b2 > 1.)
 				return false;
-
-			const float t = math::vec::scalarProduct( _normal, origin ) * den;
-
-			if ( t > hitInfo->getDistance() )
-				return false;
-
-			if ( math::betweenNInc( t, ray->tmin(), ray->tmax() ) )
+			// Compute _t_ to intersection point
+			float t = math::vec::scalarProduct(_edge2, s2) * invDivisor;
+			if ( t < hitInfo->getDistance() && math::betweenNInc(t, ray->tmin(), ray->tmax()) )
 			{
-				hitInfo->setDistance( t );
 				hitInfo->setNormal( _normal );
+				hitInfo->setDistance( t );
+				// primitive is set after return
 				return true;
 			}
-			return false;
-			*/
-			// d coef in general plane equation
-			float d = -1.0f * math::vec::scalarProduct( _normal, _a );
-
-			float a = math::vec::scalarProduct( _normal, rayOrg );
-			float b = math::vec::scalarProduct( _normal, rayDir );
-
-			if ( math::betweenNInc( b, -EPSILON, EPSILON ) )
-				return false;
-
-			float t = -1.0f * ( a + d ) / b;
-
-			// a ray can only go forward
-			if ( t < EPSILON )
-				return false;
-
-			vector3 pointHit = rayOrg + t * rayDir;
-
-			// Compute vectors        
-			vector3 v2 = pointHit - _a;
-
-			// Compute dot products
-			float dot00 = math::vec::scalarProduct(_edge2, _edge2);
-			float dot01 = math::vec::scalarProduct(_edge2, _edge1);
-			float dot02 = math::vec::scalarProduct(_edge2, v2);
-			float dot11 = math::vec::scalarProduct(_edge1, _edge1);
-			float dot12 = math::vec::scalarProduct(_edge1, v2);
-
-			// Compute barycentric coordinates
-			float invDenom = 1.0f / ((dot00 * dot11) - (dot01 * dot01));
-			float u = ((dot11 * dot02) - (dot01 * dot12)) * invDenom;
-			float v = ((dot00 * dot12) - (dot01 * dot02)) * invDenom;
-
-			// Check if point is in triangle
-			if ( (u > -EPSILON) && (v > -EPSILON) && (u + v < 1.0f + EPSILON) )
-			{
-				if ( t < hitInfo->getDistance() )
-				{
-					hitInfo->setNormal( _normal );
-					hitInfo->setDistance( t );
-					// primitive is set after return
-					return true;
-				}
-			}			
-			return false;
-			/*
-			vector3 h = math::vec::crossProduct( rayDir, _edge2 );
-			float a = math::vec::scalarProduct( _edge1, h );
-
-			if ( a > -EPSILON && a < EPSILON )
-				return false;
-
-			math::invert( a );
-
-			vector3 s = rayOrg - _a;
-
-			float u = a * math::vec::scalarProduct( s, h );
-
-			if ( u < 0.0f || u > 1.0f )
-				return false;
-
-			vector3 q = math::vec::crossProduct( s, _edge1 );
-			float v = a * math::vec::scalarProduct( rayDir, q );
-
-			if ( v < 0.0f || (u+v) > 1.0f )
-				return false;
-
-			float t = math::vec::scalarProduct( _edge2, q );
-			if ( t > EPSILON )
-			{
-				hitInfo->setDistance( t );
-				hitInfo->setNormal( _normal );
-				return true;
-			}
-
 			return false;*/
+		
+
+
+   
+   /* begin calculating determinant - also used to calculate U parameter */
+   vector3 pvec = math::vec::crossProduct(ray->getDirection(), _edge2);
+
+   /* if determinant is near zero, ray lies in plane of triangle */
+   float det = math::vec::scalarProduct(_edge1, pvec);
+
+
+   if (det < EPSILON)
+      return 0;
+
+   /* calculate distance from vert0 to ray origin */
+   vector3 tvec = ray->getOrigin() - _a;
+
+   /* calculate U parameter and test bounds */
+   float u = math::vec::scalarProduct(tvec, pvec);
+   if (u < 0.0 || u > det)
+      return false;
+
+   /* prepare to test V parameter */
+   vector3 qvec = math::vec::crossProduct(tvec, _edge1);
+
+    /* calculate V parameter and test bounds */
+   float v = math::vec::scalarProduct(ray->getDirection(), qvec);
+   if (v < 0.0 || u + v > det)
+      return false;
+
+   /* calculate t, scale parameters, ray intersects triangle */
+   float t = math::vec::scalarProduct(_edge2, qvec);
+   float inv_det = 1.0 / det;
+   t *= inv_det;
+   u *= inv_det;
+   v *= inv_det;
+
+   if ( t < hitInfo->getDistance() && math::betweenNInc(t, ray->tmin(), ray->tmax()) )
+			{
+				hitInfo->setNormal( _normal );
+				hitInfo->setDistance( t );
+				// primitive is set after return
+				return true;
+			}
+   return false;
+
+
+
 		}
 
 	private:
@@ -162,18 +129,21 @@ class Sphere : public Primitive
 			const float c = math::vec::scalarProduct(dst, dst) - _radius*_radius;
 			const float d = b*b - c;
 	
-			if( d > 0 )
+			if( d > 0.f )
 			{			 
 				float t = -b - sqrtf(d);
 				if (t < 0.0f)
 					t = -b + sqrtf(d);
 			
-				hitInfo->setDistance( t );				
-				vector3 normal = (ray->getOrigin() + (ray->getDirection() * t) - _center) * _radius;
-				hitInfo->setNormal( normal.normalize() );
-				// hitInfo->setPrimitive is done inside intersectRayWithScene(Ray*, HitInfo*) after hit
-				// because we don't want to C-cast to Primitive* here instead of dereferencing an iterator
-				return true;
+				if ( math::betweenNInc(t, ray->tmin(), ray->tmax()) )
+				{
+					hitInfo->setDistance( t );				
+					vector3 normal = (ray->getOrigin() + (ray->getDirection() * t) - _center) * _radius;
+					hitInfo->setNormal( normal.normalize() );
+					// hitInfo->setPrimitive is done inside intersectRayWithScene(Ray*, HitInfo*) after hit
+					// because we don't want to C-cast to Primitive* here instead of dereferencing an iterator
+					return true;
+				}
 			}
 			return false;
 		}	
