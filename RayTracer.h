@@ -168,7 +168,7 @@ class RayTracer
 			
 				if( d < 0.0f )
 				{				
-					gamma = 1.0 / refraction;
+					gamma = 1.0f / refraction;
 				}
 				else
 				{					
@@ -177,7 +177,7 @@ class RayTracer
 					normal = -1.0f * normal;
 				}
 
-				float sqrterm = 1.0 - gamma * gamma * (1.0 - d * d);
+				float sqrterm = 1.0f - gamma * gamma * (1.0f - d * d);
 
 				sqrterm = d * gamma + sqrtf(sqrterm);
 					
@@ -203,18 +203,15 @@ class RayTracer
 			@param hitInfo[in] hit result
 			@return bool
 		*/
-		bool isInShadow( Ray* ray, HitInfo* hitInfo )
+		bool isInShadow( Ray* ray )
 		{						
 			for ( std::vector< Primitive* >::iterator it = _primitives.begin(); it != _primitives.end(); ++it )
 			{	
 				// we cast the ray at every primitive (sphere, triangle) in the scene
 				// and see what happens
 				Primitive* primitive = *it;
-				if ( primitive->intersect( ray, hitInfo ) )	
-				{
-					hitInfo->setPrimitive( primitive );
-					return true;
-				}
+				if ( primitive->intersect( ray ) )										
+					return true;				
 			}
 			return false;			
 		}
@@ -254,7 +251,7 @@ class RayTracer
 															
 					Ray lightRay( lightPos, lightDir, 0.0f, (lightPos-hitPoint).length() - EPSILON );					
 
-					if (isInShadow(&lightRay, &HitInfo()))
+					if (isInShadow(&lightRay))
 						continue;
 					
 					color += material.color() * material.diffuse() * intensity * lightColor;

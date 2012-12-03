@@ -7,7 +7,7 @@
 class Primitive
 {
 	public:
-		virtual bool intersect( Ray* ray, HitInfo* hitInfo ) const
+		virtual bool intersect( Ray* ray, HitInfo* hitInfo = NULL ) const
 		{ return false; }
 
 		void setMaterial( material const& m )
@@ -38,7 +38,7 @@ class Triangle : public Primitive
 			@param HitInfo[in] Hit info data structure.
 			@return bool
 		*/
-		bool intersect( Ray* ray, HitInfo* hitInfo ) const
+		bool intersect( Ray* ray, HitInfo* hitInfo = NULL ) const
 		{										
 			vector3 rayDir = ray->getDirection();
 			vector3 rayOrg = ray->getOrigin();							
@@ -74,11 +74,14 @@ class Triangle : public Primitive
 			math::invert(det);
 			t *= det;
 
-			if ( t < hitInfo->getDistance() && math::betweenNInc(t, ray->tmin(), ray->tmax()) )
-			{
-				hitInfo->setNormal( _normal );
-				hitInfo->setDistance( t );
-				// primitive is set after return
+			if ( math::betweenNInc(t, ray->tmin(), ray->tmax()) )
+			{				
+				if (hitInfo && t < hitInfo->getDistance())
+				{
+					hitInfo->setNormal( _normal );
+					hitInfo->setDistance( t );
+					// primitive is set after return
+				}
 				return true;
 			}
 			return false;
@@ -97,7 +100,7 @@ class Sphere : public Primitive
 			: _center(center), _radius(r)
 		{ }
 
-		bool intersect( Ray* ray, HitInfo* hitInfo ) const
+		bool intersect( Ray* ray, HitInfo* hitInfo = NULL ) const
 		{			
 			const vector3 dst = ray->getOrigin() - _center;
 			const float b = math::vec::scalarProduct(dst, ray->getDirection());
@@ -112,9 +115,12 @@ class Sphere : public Primitive
 			
 				if ( math::betweenNInc(t, ray->tmin(), ray->tmax()) )
 				{
-					hitInfo->setDistance( t );				
-					vector3 normal = (ray->getOrigin() + (ray->getDirection() * t) - _center) * _radius;
-					hitInfo->setNormal( normal.normalize() );
+					if (hitInfo && t < hitInfo->getDistance())
+					{
+						hitInfo->setDistance( t );				
+						vector3 normal = (ray->getOrigin() + (ray->getDirection() * t) - _center) * _radius;
+						hitInfo->setNormal( normal.normalize() );
+					}
 					// hitInfo->setPrimitive is done inside intersectRayWithScene(Ray*, HitInfo*) after hit
 					// because we don't want to C-cast to Primitive* here instead of dereferencing an iterator
 					return true;
