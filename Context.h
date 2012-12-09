@@ -12,6 +12,7 @@
 #include "RayTracerDefines.h"
 #include "PointLight.h"
 #include "Primitive.h"
+#include "AreaLight.h"
 #include "RayTracer.h"
 
 /// A context class.
@@ -31,14 +32,15 @@ class Context
 			@param height [in] Context height.
 		*/
 		Context ( uint32 width = 0, uint32 height = 0 ) 
-			: _w(width), _h(height), _size(width*height), _inCycle(false), _updateMVPMneeded(false)			
+			: _w(width), _h(height), _size(width*height), _inCycle(false), _updateMVPMneeded(false),
+			_currentEmissiveMaterial(NULL)
 		{ 
 			_matrixStack		= new std::vector<matrix4x4>;
 			_colorBuffer		= new rgb[width * height];
 			
 			initZBuffer();	
 
-			_rayTracer			= new RayTracer(); // is created when needed
+			_rayTracer			= new RayTracer( this ); // is created when needed
 		} 		
 
 		/// Context destructor.
@@ -758,17 +760,14 @@ class Context
 		{ return _vectorBuffer.size(); }
 
 		void addTriangle()
-		{
-			// pretty ugly conversion from a vertex to a vector
-			// TODO: unify vector3 and vertex
-				
+		{			
 			Triangle* triangle = new Triangle(
 						_vectorBuffer[0],
 						_vectorBuffer[1],
 						_vectorBuffer[2]
 					);
 
-			triangle->setMaterial( _currentMaterial );
+			triangle->setMaterial( _currentMaterial );		
 
 			_rayTracer->addPrimitive( triangle );
 		}	
@@ -795,6 +794,29 @@ class Context
 				for ( uint32 x = 0; x < _w; ++x )				
 					setColorBuffer( x, y, _rayTracer->castRay(x, y) );				
 			}
+		}
+
+		void setCurrentEmissiveMaterial( float r, float g, float b, float c0, float c1, float c2 )
+		{
+			_currentEmissiveMaterial = new emissiveMaterial( rgb( r, g, b ), c0, c1, c2 );
+		}
+
+		emissiveMaterial* getCurrentEmissiveMaterial()
+		{
+			return _currentEmissiveMaterial;
+		}
+
+		void addAreaLight()
+		{
+			Triangle* triangle = new Triangle(
+						_vectorBuffer[0],
+						_vectorBuffer[1],
+						_vectorBuffer[2]
+					);
+					
+			AreaLight* light = new AreaLight(triangle, _currentEmissiveMaterial);
+
+			_rayTracer->addAreaLight(light);			
 		}
 
 
@@ -850,6 +872,7 @@ class Context
 		bool					_isDefiningScene;
 		RayTracer*				_rayTracer;
 		material				_currentMaterial;
+		emissiveMaterial*		_currentEmissiveMaterial;
 };
 
 #endif

@@ -57,9 +57,14 @@ struct vector3
 inline vector3 operator* ( vector3 const& v, float const& n )
 { return vector3(n * v.x(), n * v.y(), n * v.z()); }
 
-
 inline vector3 operator* ( float const& n, vector3 const& v )
 { return v * n; }
+
+inline vector3 operator* ( vector3 const& u, vector3 const& v )
+{ return vector3(u.x() * v.x(), u.y() * v.y(), u.z() * v.z()); }
+
+inline vector3 operator/ ( vector3 const& v, float const& n )
+{ return vector3(v.x() / n, v.y() / n, v.z() / n); }
 
 struct matrix4x4
 {

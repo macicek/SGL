@@ -157,7 +157,12 @@ void sglEnd(void)
 		{
 			// we construct a triangle only with three points
 			if ( cc->getVectorBufferSize() == 3 )
-				cc->addTriangle();			
+			{
+				if ( emissiveMaterial* em = cc->getCurrentEmissiveMaterial() )
+					cc->addAreaLight();
+				else
+					cc->addTriangle();
+			}
 		}
 		cc->clearVectorBuffer();
 	}
@@ -574,5 +579,15 @@ void sglEmissiveMaterial(
 						 const float c1,
 						 const float c2
 						 )
-{}
+
+{
+	Context* cc = cm.currentContext();
+	if ( !cc->isDefiningScene() )
+	{
+		setErrCode( SGL_INVALID_OPERATION );
+		return;
+	}
+
+	cc->setCurrentEmissiveMaterial( r, g, b, c0, c1, c2 );	
+}
 

@@ -40,4 +40,7 @@ inline rgb operator* ( float const& coef, rgb const& color )
 inline rgb operator* ( rgb const& color, float const& coef )
 { return coef * color; }
 
+inline rgb operator/ ( rgb const& color, float const& coef )
+{ return rgb( color.red() / coef, color.green() / coef, color.blue() / coef ); }
+
 #endif

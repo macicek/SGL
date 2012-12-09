@@ -2,6 +2,7 @@
 #define __RAY_TRACER_H__
 
 #include <math.h>
+#include <ctime>
 
 /// A Ray Tracer main class
 /**
@@ -16,9 +17,15 @@
 		3c) + refraction color
 		3d) return total color
 */
+class Context;
 class RayTracer
 {
 	public:	
+		RayTracer( Context* context = NULL ) : _context(context)
+		{ 
+			srand(time(NULL));
+		}
+
 		void addLight( PointLight*  light )
 		{
 			// TODO: There might be more light types in the future, atm leave
@@ -93,6 +100,17 @@ class RayTracer
 			if ( ray->getDepth() > MAX_RAY_DEPTH )
 				return color;
 
+			// area lights are stored in a separate container
+			// this is a little hack to return a pure color in case we hit an emissive area
+			for ( std::vector<AreaLight*>::iterator it = _areaLights.begin(); it != _areaLights.end(); ++it )
+			{
+				AreaLight* light = *it;
+
+				Triangle* triangle = light->getTriangle();
+				if ( triangle->intersect( ray, hitInfo ) )
+					return light->getColor();
+			}
+
 			for ( std::vector< Primitive* >::iterator it = _primitives.begin(); it != _primitives.end(); ++it )
 			{	
 				// we cast the ray at every primitive (sphere, triangle) in the scene
@@ -105,7 +123,9 @@ class RayTracer
 			// we hit something
 			if ( Primitive* primitive = hitInfo->getPrimitive() )
 			{				
-				color = shade( ray, hitInfo ); // diffuse + specular				
+				color = shade( ray, hitInfo ); // diffuse + specular
+
+				color += shadeAreaLight( ray, hitInfo );
 				
 				// reflection
 				color += castReflectedRays( ray, hitInfo ); // reflection
@@ -118,6 +138,63 @@ class RayTracer
 			
 			return color;
 		}
+
+		rgb shadeAreaLight( Ray* ray, HitInfo* hitInfo )
+		{
+			rgb color;
+			
+			for (std::vector<AreaLight*>::iterator it = _areaLights.begin(); it != _areaLights.end(); ++it)
+			{					
+				AreaLight* areaLight = *it;
+				
+				// area light
+				float areaDecline	= areaLight->getArea() / AREA_LIGHT_SAMPLES;
+				rgb areaColor		= areaLight->getColor();
+				vector3 areaNormal	= areaLight->getNormal();
+				// hit primitive
+				rgb hitColor		= hitInfo->getPrimitive()->getMaterial().color();
+				vector3 hitPoint	= ray->getOrigin() + ( ray->getDirection() * hitInfo->getDistance() );	
+				vector3 hitNormal	= hitInfo->getNormal();
+				float hitDiffuse = hitInfo->getPrimitive()->getMaterial().diffuse();
+
+				for ( uint32 i = 0; i < AREA_LIGHT_SAMPLES; ++i )
+				{																				
+					vector3 sample = areaLight->getSample();
+				
+					vector3 shadowRayDir = sample - hitPoint;							
+
+					float distance = shadowRayDir.length();
+
+					shadowRayDir.normalize();
+
+					float tmax = distance - EPSILON;
+					float tmin = EPSILON;
+						
+					Ray shadowRay( hitPoint, shadowRayDir, tmin, tmax );	
+
+
+					//////////////////////////
+
+					float intensity = math::vec::scalarProduct( hitNormal, shadowRayDir );
+					if ( intensity > 0.0f )
+					{					
+						const vector3	lightDir	= (hitPoint - sample).normalize();
+															
+						Ray lightRay( sample, lightDir, EPSILON, (sample-hitPoint).length() - EPSILON );					
+
+						if (isInShadow(&lightRay))
+							continue;
+
+						float contrib = math::vec::scalarProduct(areaNormal, -1.0f * shadowRayDir);
+						contrib /= areaLight->getDecline(distance);
+					
+						color += contrib * areaDecline * hitColor * hitDiffuse * intensity * areaColor;
+					}				
+				}
+
+			}
+			return color;
+		}			
 
 		/// Casts reflected rays
 		/**
@@ -287,17 +364,26 @@ class RayTracer
 		{ _background = background;	}
 
 		rgb getBackround() const
-		{ return _background; }
+		{ return _background; }	
+
+		void addAreaLight(AreaLight* light)
+		{
+			_areaLights.push_back(light);
+		}
 
 	private:
 		std::vector<PointLight*>	_lights;
-		std::vector<Primitive*>		_primitives;
+		std::vector<AreaLight*>		_areaLights;
+
+		std::vector<Primitive*>		_primitives;		
 
 		matrix4x4					_inverseMVP;
 		matrix4x4					_viewportM;
 		viewport					_viewport;
 
 		rgb							_background;
+
+		Context*					_context;
 };
 
 #endif
