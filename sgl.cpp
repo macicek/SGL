@@ -569,7 +569,11 @@ void sglRasterizeScene() {}
 void sglEnvironmentMap(const int width,
 					   const int height,
 					   float *texels)
-{}
+{
+	Context* cc = cm.currentContext();
+
+	cc->setBg( width, height, texels );
+}
 
 void sglEmissiveMaterial(
 						 const float r,

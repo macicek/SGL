@@ -41,6 +41,8 @@ class Context
 			initZBuffer();	
 
 			_rayTracer			= new RayTracer( this ); // is created when needed
+
+			_emBg = NULL;
 		} 		
 
 		/// Context destructor.
@@ -791,8 +793,10 @@ class Context
 
 			for ( uint32 y = 0; y < _h; ++y )
 			{
-				for ( uint32 x = 0; x < _w; ++x )				
+				for ( uint32 x = 0; x < _w; ++x )		
+				{					
 					setColorBuffer( x, y, _rayTracer->castRay(x, y) );				
+				}
 			}
 		}
 
@@ -819,6 +823,10 @@ class Context
 			_rayTracer->addAreaLight(light);			
 		}
 
+		void setBg( float width, float height, float* bg )
+		{
+			_rayTracer->setEmBackground( width, height, bg );
+		}
 
 	protected:
 		void doMVPMupdate()
@@ -833,6 +841,8 @@ class Context
 			_zbuffer = new float[_w * _h];
 			clearZBuffer();
 		}
+
+	
 
 	private:
 		uint32 _w, _h;
@@ -873,6 +883,9 @@ class Context
 		RayTracer*				_rayTracer;
 		material				_currentMaterial;
 		emissiveMaterial*		_currentEmissiveMaterial;
+
+		float _emBgW, _emBgH;
+		float * _emBg;
 };
 
 #endif

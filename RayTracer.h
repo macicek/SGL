@@ -24,6 +24,7 @@ class RayTracer
 		RayTracer( Context* context = NULL ) : _context(context)
 		{ 
 			srand(time(NULL));
+			_emBg = NULL;
 		}
 
 		void addLight( PointLight*  light )
@@ -133,8 +134,24 @@ class RayTracer
 				// refraction
 				color += castRefractedRays( ray, hitInfo ); // refraction
 			}
-			else		
-				return _background; // background
+			else	
+			{
+				// huh, i still don't know how this really works, but it does
+				if (_emBg)
+				{
+					float distance = sqrt(ray->getDirection().x() * ray->getDirection().x() + ray->getDirection().y() * ray->getDirection().y());
+					float rad = distance > 0 ? 0.159154943 * acos(ray->getDirection().z()) / distance : 0.0f;
+			
+					int u = (0.5 + ray->getDirection().x() * rad) * _emBgW;			
+					int v = (1 - (0.5 + ray->getDirection().y() * rad)) * _emBgH;
+
+					uint32 pos = (v * _emBgW + u)*3;
+
+					return rgb(_emBg[pos], _emBg[pos+1], _emBg[pos+2]);
+				}
+				else
+					return _background; // background
+			}
 			
 			return color;
 		}
@@ -371,6 +388,14 @@ class RayTracer
 			_areaLights.push_back(light);
 		}
 
+		void setEmBackground( float const& w, float const& h, float* texture )
+		{ 
+			_emBgW = w;
+			_emBgH = w;
+			_emBg = texture;
+		}
+
+
 	private:
 		std::vector<PointLight*>	_lights;
 		std::vector<AreaLight*>		_areaLights;
@@ -382,6 +407,9 @@ class RayTracer
 		viewport					_viewport;
 
 		rgb							_background;
+
+		float _emBgW, _emBgH;
+		float * _emBg;
 
 		Context*					_context;
 };
